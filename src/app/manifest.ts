@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next"
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "RideConnect — Group Adventures",
-    short_name: "RideConnect",
+    name: "HYKRZ — Group Adventures",
+    short_name: "HYKRZ",
     description:
       "Discover, organize, and join group events — motorcycle rides, treks, bicycle rides, group travel, and more.",
     start_url: "/",

@@ -42,7 +42,7 @@ export function EventTypes() {
             </span>
           </h2>
           <p className="mt-4 text-lg text-zinc-400 max-w-2xl mx-auto">
-            From two-wheelers to two feet — RideConnect supports every kind of
+            From two-wheelers to two feet — HYKRZ supports every kind of
             group adventure.
           </p>
         </motion.div>

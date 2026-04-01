@@ -7,7 +7,10 @@ import { db } from "@/lib/db"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
-  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
+  session: {
+    strategy: "database", // Use Session table (FR-1.8: view/revoke sessions)
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
   pages: {
     signIn: "/login",
     error: "/login",
@@ -51,17 +54,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.role = (user as { role: string }).role
-        token.id = user.id
-      }
-      return token
-    },
-    async session({ session, token }) {
+    async session({ session, user }) {
       if (session.user) {
-        session.user.id = token.id as string
-        session.user.role = token.role as string
+        // Fetch full user with role from DB
+        const dbUser = await db.user.findUnique({
+          where: { id: user.id },
+          select: { role: true },
+        })
+        session.user.id = user.id
+        session.user.role = dbUser?.role ?? "USER"
       }
       return session
     },

@@ -33,7 +33,7 @@ export function Footer() {
                 <Compass className="h-4 w-4 text-white" />
               </div>
               <span className="text-lg font-bold text-white">
-                Ride<span className="text-orange-500">Connect</span>
+                HYK<span className="text-orange-500">RZ</span>
               </span>
             </Link>
             <p className="text-sm text-zinc-500 max-w-xs">
@@ -65,7 +65,7 @@ export function Footer() {
 
         <div className="mt-12 pt-8 border-t border-zinc-800/50 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-zinc-600">
-            &copy; {new Date().getFullYear()} RideConnect. All rights reserved.
+            &copy; {new Date().getFullYear()} HYKRZ. All rights reserved.
           </p>
           <div className="flex items-center gap-4">
             <span className="text-sm text-zinc-600">Made with passion in India</span>

@@ -42,7 +42,7 @@ export function Header() {
               <Compass className="h-5 w-5 text-white" />
             </div>
             <span className="text-xl font-bold text-white">
-              Ride<span className="text-orange-500">Connect</span>
+              HYK<span className="text-orange-500">RZ</span>
             </span>
           </Link>
 
