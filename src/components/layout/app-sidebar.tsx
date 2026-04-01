@@ -1,7 +1,9 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useSession } from "next-auth/react"
 import {
   Calendar,
   LayoutGrid,
@@ -10,8 +12,10 @@ import {
   Compass,
   Bell,
   Search,
+  Pin,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 const navItems = [
   { label: "Events", href: "/events", icon: Calendar },
@@ -20,8 +24,31 @@ const navItems = [
   { label: "Profile", href: "/profile", icon: User },
 ]
 
+interface PinnedOrganizer {
+  id: string
+  organizer: {
+    id: string
+    name: string | null
+    image: string | null
+    slug: string | null
+    verified: boolean
+  }
+}
+
 export function AppSidebar() {
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const [pins, setPins] = useState<PinnedOrganizer[]>([])
+
+  useEffect(() => {
+    if (!session?.user) return
+    fetch("/api/pins")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.pins) setPins(data.pins)
+      })
+      .catch(() => {})
+  }, [session?.user])
 
   return (
     <>
@@ -71,6 +98,53 @@ export function AppSidebar() {
               </Link>
             )
           })}
+
+          {/* Pinned Organizers */}
+          {pins.length > 0 && (
+            <div className="pt-4 mt-4 border-t border-zinc-800/50">
+              <div className="flex items-center gap-2 px-4 mb-2">
+                <Pin className="h-3 w-3 text-zinc-600" />
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
+                  Pinned
+                </span>
+              </div>
+              {pins.map((pin) => {
+                const slug = pin.organizer.slug
+                const isActive = pathname === `/organizer/${slug}`
+                const initials = pin.organizer.name
+                  ? pin.organizer.name.charAt(0).toUpperCase()
+                  : "?"
+                return (
+                  <Link
+                    key={pin.id}
+                    href={`/@${slug}`}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all",
+                      isActive
+                        ? "bg-orange-500/10 text-orange-500"
+                        : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+                    )}
+                  >
+                    <Avatar className="h-6 w-6">
+                      {pin.organizer.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={pin.organizer.image}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <AvatarFallback className="bg-orange-500/10 text-orange-500 text-[10px] font-bold">
+                          {initials}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                    <span className="truncate">{pin.organizer.name}</span>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
         </nav>
 
         {/* Notifications */}

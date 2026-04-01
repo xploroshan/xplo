@@ -1,6 +1,11 @@
 import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
+  async rewrites() {
+    return [
+      { source: "/@:slug", destination: "/organizer/:slug" },
+    ]
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "lh3.googleusercontent.com" },

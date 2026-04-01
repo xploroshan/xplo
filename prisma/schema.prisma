@@ -36,6 +36,8 @@ model User {
   banned        Boolean   @default(false)
   twoFactorEnabled Boolean @default(false) // FR-1.7
   emergencyContacts Json? // FR-4.12 SOS contacts
+  slug          String?   @unique  // URL slug for /@slug organizer profiles
+  socialLinks   Json?              // { instagram?, youtube?, whatsapp?, website? }
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -49,10 +51,15 @@ model User {
   comments       Comment[]
   notifications  Notification[]
   sentNotifications Notification[]   @relation("NotificationSender")
+  pinnedOrganizers  OrganizerPin[]   @relation("UserPins")
+  pinnedBy          OrganizerPin[]   @relation("OrganizerPinnedBy")
+  followers         Follow[]         @relation("UserFollowers")
+  following         Follow[]         @relation("UserFollowing")
 
   @@index([email])
   @@index([city])
   @@index([role])
+  @@index([slug])
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -383,4 +390,44 @@ model Notification {
   sender User? @relation("NotificationSender", fields: [senderId], references: [id])
 
   @@index([userId, read, createdAt])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 11: OrganizerPin
+// Purpose: Users can pin up to 5 organizer profiles to their sidebar for
+//          quick access. Ordered by position (0-4).
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model OrganizerPin {
+  id          String   @id @default(cuid())
+  userId      String                          // The user who pinned
+  organizerId String                          // The organizer being pinned
+  position    Int      @default(0)            // 0-4 ordering in sidebar
+  createdAt   DateTime @default(now())
+
+  user      User @relation("UserPins", fields: [userId], references: [id], onDelete: Cascade)
+  organizer User @relation("OrganizerPinnedBy", fields: [organizerId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizerId])
+  @@index([userId, position])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 12: Follow
+// Purpose: Users follow organizers to get notified about new events.
+//          Supports follower counts and feed personalization.
+// SRS: FR-5.9 (Feed personalization), FR-6.1 (New follower notification)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String                          // The user who follows
+  followingId String                          // The organizer being followed
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
 }

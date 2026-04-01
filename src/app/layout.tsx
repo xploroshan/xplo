@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next"
 import "./globals.css"
 import { APP_NAME, APP_DESCRIPTION, APP_URL } from "@/lib/constants"
+import { Providers } from "@/components/providers"
 
 export const metadata: Metadata = {
   title: {
@@ -73,7 +74,7 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" sizes="any" />
       </head>
       <body className="min-h-screen bg-background text-foreground antialiased" style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   )
