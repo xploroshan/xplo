@@ -52,7 +52,7 @@ export default function LoginPage() {
         </Link>
         <CardTitle className="text-2xl text-white">Welcome back</CardTitle>
         <CardDescription className="text-zinc-400">
-          Sign in to your RideConnect account
+          Sign in to your HYKRZ account
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-6">

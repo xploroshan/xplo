@@ -1,4 +1,4 @@
-export const APP_NAME = "RideConnect"
+export const APP_NAME = "HYKRZ"
 export const APP_DESCRIPTION =
   "Discover, organize, and join group events — motorcycle rides, treks, bicycle rides, group travel, and more. Connect with fellow adventurers in your city."
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"

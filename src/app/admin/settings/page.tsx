@@ -10,7 +10,7 @@ export default function AdminSettingsPage() {
     <div className="p-6 lg:p-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white">Platform Settings</h1>
-        <p className="text-zinc-400 mt-1">Configure every aspect of RideConnect.</p>
+        <p className="text-zinc-400 mt-1">Configure every aspect of HYKRZ.</p>
       </div>
 
       <div className="space-y-6">
@@ -26,11 +26,11 @@ export default function AdminSettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-300">Platform Name</label>
-                <Input defaultValue="RideConnect" className="bg-zinc-800/50 border-zinc-700 text-white focus-visible:ring-orange-500" />
+                <Input defaultValue="HYKRZ" className="bg-zinc-800/50 border-zinc-700 text-white focus-visible:ring-orange-500" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-300">Support Email</label>
-                <Input defaultValue="support@rideconnect.app" className="bg-zinc-800/50 border-zinc-700 text-white focus-visible:ring-orange-500" />
+                <Input defaultValue="support@hykrz.com" className="bg-zinc-800/50 border-zinc-700 text-white focus-visible:ring-orange-500" />
               </div>
             </div>
             <div className="space-y-2">

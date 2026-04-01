@@ -15,7 +15,7 @@ export default function ProfilePage() {
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-white">RideConnect User</h1>
+          <h1 className="text-2xl font-bold text-white">HYKRZ User</h1>
           <p className="text-zinc-400 flex items-center gap-1 mt-1">
             <MapPin className="h-4 w-4" /> Bangalore, India
           </p>

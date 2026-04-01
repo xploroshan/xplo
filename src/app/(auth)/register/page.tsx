@@ -55,7 +55,7 @@ export default function RegisterPage() {
         </Link>
         <CardTitle className="text-2xl text-white">Create your account</CardTitle>
         <CardDescription className="text-zinc-400">
-          Join RideConnect and start your adventure
+          Join HYKRZ and start your adventure
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-6">

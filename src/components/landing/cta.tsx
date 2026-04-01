@@ -31,7 +31,7 @@ export function CTA() {
           </p>
           <Link href="/register">
             <Button variant="glow" size="lg" className="text-lg px-10 h-14 rounded-2xl">
-              Join RideConnect Today
+              Join HYKRZ Today
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </Link>
