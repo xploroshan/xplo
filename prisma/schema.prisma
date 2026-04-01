@@ -7,7 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── Authentication ──────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 1: User
+// Purpose: Every person on the platform — riders, organizers, admins.
+// SRS: FR-1.1 to FR-1.5 (Registration), FR-1.6 (JWT), FR-1.7 (2FA)
+// ═══════════════════════════════════════════════════════════════════════════════
 
 enum UserRole {
   USER
@@ -26,29 +30,36 @@ model User {
   image         String?
   bio           String?   @db.VarChar(500)
   city          String?
-  interests     String[]
+  interests     String[]  // Multi-select tags (FR-1.5)
   role          UserRole  @default(USER)
   verified      Boolean   @default(false)
   banned        Boolean   @default(false)
+  twoFactorEnabled Boolean @default(false) // FR-1.7
+  emergencyContacts Json? // FR-4.12 SOS contacts
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts           Account[]
-  sessions           Session[]
-  organizedEvents    Event[]            @relation("OrganizerEvents")
-  eventParticipants  EventParticipant[]
-  groupMemberships   GroupMember[]
-  messages           Message[]
-  posts              Post[]
-  comments           Comment[]
-  likes              Like[]
-  notifications      Notification[]
-  sentNotifications  Notification[]     @relation("NotificationSender")
+  // Relations
+  accounts       Account[]
+  sessions       Session[]
+  organizedEvents Event[]            @relation("OrganizerEvents")
+  participations EventParticipant[]
+  messages       Message[]           @relation("SentMessages")
+  posts          Post[]
+  comments       Comment[]
+  notifications  Notification[]
+  sentNotifications Notification[]   @relation("NotificationSender")
 
   @@index([email])
   @@index([city])
   @@index([role])
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 2: Account
+// Purpose: OAuth provider accounts (Google, Apple). Required by NextAuth.
+// SRS: FR-1.3 (Google OAuth), FR-1.4 (Apple Sign-In)
+// ═══════════════════════════════════════════════════════════════════════════════
 
 model Account {
   id                String  @id @default(cuid())
@@ -70,25 +81,56 @@ model Account {
   @@index([userId])
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 3: Session
+// Purpose: Track active sessions. Users can view/revoke. Max 5 concurrent.
+// SRS: FR-1.8 (Session Management — max 5 concurrent, view & revoke)
+// ═══════════════════════════════════════════════════════════════════════════════
+
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
   userId       String
   expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAgent    String?  // Device info for "Active Sessions" UI
+  ipAddress    String?  // Location context
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 4: EventType
+// Purpose: Admin-managed event categories. Super Admin CRUD from admin panel.
+// SRS: FR-2.4 (Default Types), FR-2.5 (Custom Types), FR-2.6 (Sub-categories)
+// ═══════════════════════════════════════════════════════════════════════════════
 
-  @@unique([identifier, token])
+model EventType {
+  id            String  @id @default(cuid())
+  name          String  @unique
+  slug          String  @unique
+  icon          String               // Lucide icon name
+  color         String               // Hex color
+  description   String?
+  subcategories Json?                // FR-2.6: ["Cruiser", "Sport", "Adventure"]
+  isActive      Boolean @default(true)
+  sortOrder     Int     @default(0)
+
+  events Event[]
+
+  @@index([isActive, sortOrder])
 }
 
-// ─── Events ──────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 5: Event
+// Purpose: Core entity — a ride, trek, trip. Includes built-in group chat
+//          config (replaces separate Group table). Also stores GPS/tracking
+//          config, assembly point, POI slots, and route summary.
+// SRS: FR-2.13–2.17 (Creation/Lifecycle), FR-3.1–3.4 (Group lifecycle),
+//      FR-4.1 (Assembly), FR-4.3 (Checklist), FR-4.17 (POI), FR-4.23 (Route)
+// ═══════════════════════════════════════════════════════════════════════════════
 
 enum EventStatus {
   DRAFT
@@ -100,21 +142,6 @@ enum EventStatus {
   ARCHIVED
 }
 
-model EventType {
-  id          String  @id @default(cuid())
-  name        String  @unique
-  slug        String  @unique
-  icon        String
-  color       String
-  description String?
-  isActive    Boolean @default(true)
-  sortOrder   Int     @default(0)
-
-  events Event[]
-
-  @@index([isActive, sortOrder])
-}
-
 model Event {
   id            String      @id @default(cuid())
   title         String
@@ -123,9 +150,9 @@ model Event {
   eventTypeId   String
   startDate     DateTime
   endDate       DateTime?
-  startLocation Json?
-  destination   Json?
-  waypoints     Json?
+  startLocation Json?       // { lat, lng, address }
+  destination   Json?       // { lat, lng, address }
+  waypoints     Json?       // [{ lat, lng, label }]
   capacity      Int?
   price         Decimal?    @db.Decimal(10, 2)
   currency      String      @default("INR")
@@ -133,13 +160,29 @@ model Event {
   status        EventStatus @default(DRAFT)
   featured      Boolean     @default(false)
   organizerId   String
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
 
+  // Group Chat — merged from old Group table (FR-3.1 to FR-3.4)
+  chatActive      Boolean   @default(true)   // FR-3.3: false = read-only archive
+  chatArchivedAt  DateTime?                  // FR-3.3: 48h after completion
+  messageRetention String?                   // FR-3.17: "24h", "7d", "30d", null=forever
+
+  // Organizer Controls (FR-2.21, FR-4.1, FR-4.3)
+  requiresApproval Boolean @default(false)   // FR-2.21: approval before join
+  assemblyPoint    Json?                     // FR-4.1: { lat, lng, address, time }
+  checklist        Json?                     // FR-4.3: ["Full tank", "Helmet", "Rain gear"]
+  customPois       Json?                     // FR-4.17: [{ label, icon, placeType, radius }]
+
+  // Post-Event Data (FR-4.23)
+  routeSummary Json?                         // { distance, duration, avgSpeed, maxSpeed, elevationProfile, routeMapUrl }
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
   eventType    EventType          @relation(fields: [eventTypeId], references: [id])
   organizer    User               @relation("OrganizerEvents", fields: [organizerId], references: [id])
   participants EventParticipant[]
-  group        Group?
+  messages     Message[]
   posts        Post[]
 
   @@index([status, startDate])
@@ -148,18 +191,27 @@ model Event {
   @@index([slug])
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 6: EventParticipant
+// Purpose: Who joined which event, their role (Member/Pilot/Sweep/Moderator),
+//          RSVP status, chat mute state, and post-event rating.
+//          Replaces BOTH old EventParticipant AND GroupMember tables.
+// SRS: FR-2.18–2.21 (Join/Leave/RSVP), FR-3.3 (Group Roles),
+//      FR-4.2 (Pilot/Sweep), FR-4.24 (Rating/Review)
+// ═══════════════════════════════════════════════════════════════════════════════
+
 enum ParticipantStatus {
-  PENDING
-  CONFIRMED
-  WAITLISTED
-  CANCELLED
+  PENDING     // Awaiting organizer approval (FR-2.21)
+  CONFIRMED   // Accepted / joined
+  WAITLISTED  // Event full, on waitlist (FR-2.16)
+  CANCELLED   // Left or removed
 }
 
 enum ParticipantRole {
   MEMBER
-  PILOT
-  SWEEP
-  MODERATOR
+  PILOT      // FR-4.2: leads route, green on map
+  SWEEP      // FR-4.2: tail, red on map
+  MODERATOR  // FR-3.3: can delete msgs, pin, mute
 }
 
 model EventParticipant {
@@ -168,7 +220,12 @@ model EventParticipant {
   eventId   String
   status    ParticipantStatus @default(PENDING)
   role      ParticipantRole   @default(MEMBER)
+  chatMuted Boolean           @default(false)  // Replaces GroupMember.mutedAt
   joinedAt  DateTime          @default(now())
+
+  // Post-event rating (FR-4.24)
+  rating    Int?              // 1–5 stars
+  review    String?           @db.Text
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
@@ -177,42 +234,14 @@ model EventParticipant {
   @@index([eventId, status])
 }
 
-// ─── Groups & Messaging ─────────────────────────────────────────────────────
-
-model Group {
-  id        String   @id @default(cuid())
-  name      String
-  eventId   String   @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-
-  event   Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  members GroupMember[]
-  messages Message[]
-
-  @@index([isActive])
-}
-
-enum GroupRole {
-  ADMIN
-  MODERATOR
-  MEMBER
-}
-
-model GroupMember {
-  id       String    @id @default(cuid())
-  userId   String
-  groupId  String
-  role     GroupRole  @default(MEMBER)
-  joinedAt DateTime  @default(now())
-  mutedAt  DateTime?
-
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, groupId])
-  @@index([groupId])
-}
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 7: Message
+// Purpose: Chat messages in event groups AND direct messages (1-on-1 / group DM).
+//          Points directly to Event (no separate Group table).
+//          When eventId is null, it's a DM identified by conversationId.
+// SRS: FR-3.5–3.11 (Messaging), FR-3.12–3.14 (Location),
+//      FR-5.23–5.26 (Direct Messages)
+// ═══════════════════════════════════════════════════════════════════════════════
 
 enum MessageType {
   TEXT
@@ -221,81 +250,110 @@ enum MessageType {
   AUDIO
   LOCATION
   DOCUMENT
-  SYSTEM
+  POLL       // FR-3.9
+  SYSTEM     // Auto-generated (join/leave/role change)
 }
 
 model Message {
-  id        String      @id @default(cuid())
-  content   String      @db.Text
-  type      MessageType @default(TEXT)
-  metadata  Json?
-  groupId   String
-  senderId  String
-  replyToId String?
-  pinned    Boolean     @default(false)
-  deleted   Boolean     @default(false)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id             String      @id @default(cuid())
+  content        String      @db.Text
+  type           MessageType @default(TEXT)
+  metadata       Json?       // Flexible: poll options, file info, location coords, link preview
+  eventId        String?     // null for DMs (FR-5.23)
+  conversationId String?     // For DMs: sorted "userId1_userId2" or group DM id (FR-5.24)
+  senderId       String
+  replyToId      String?     // FR-3.7: inline reply
+  pinned         Boolean     @default(false)  // FR-3.7: organizer+ can pin
+  deleted        Boolean     @default(false)  // FR-3.7: soft delete
+  editedAt       DateTime?   // FR-3.7: edit within 15 min
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
-  group   Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  sender  User     @relation(fields: [senderId], references: [id])
+  event   Event?   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sender  User     @relation("SentMessages", fields: [senderId], references: [id])
   replyTo Message? @relation("MessageReplies", fields: [replyToId], references: [id])
   replies Message[] @relation("MessageReplies")
 
-  @@index([groupId, createdAt])
+  @@index([eventId, createdAt])
+  @@index([conversationId, createdAt])
   @@index([senderId])
 }
 
-// ─── Social Media ───────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 8: Post
+// Purpose: Social feed content — photos, videos, stories. Likes stored as
+//          JSON array (no separate Like table). Supports hashtags, geo-tags,
+//          user tags, stories, and bookmarks.
+// SRS: FR-5.1–5.8 (Content Creation), FR-5.9–5.13 (Feed),
+//      FR-5.14 (Likes), FR-5.17 (Bookmarks), FR-5.19–5.22 (Stories)
+// ═══════════════════════════════════════════════════════════════════════════════
 
 model Post {
-  id         String   @id @default(cuid())
-  content    String?  @db.Text
-  images     Json?
-  visibility String   @default("public")
-  userId     String
-  eventId    String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String    @id @default(cuid())
+  content     String?   @db.Text       // FR-5.3: caption (2200 char max)
+  images      Json?                    // FR-5.1: array of image URLs (up to 10)
+  visibility  String    @default("public") // FR-5.8: "public", "friends", "event", "close_friends"
+  userId      String
+  eventId     String?                  // Optional event tag
 
+  // Engagement — no separate Like table (FR-5.14)
+  likedBy     String[]                 // Array of userIds who liked
+  likesCount  Int       @default(0)    // Denormalized count for fast reads
+
+  // Tags & Discovery (FR-5.4, FR-5.5, FR-5.7)
+  taggedUsers String[]                 // FR-5.4: up to 20 tagged userIds
+  hashtags    String[]                 // FR-5.5: extracted from caption
+  location    Json?                    // FR-5.7: { lat, lng, name }
+
+  // Stories (FR-5.19–5.22)
+  isStory     Boolean   @default(false)
+  expiresAt   DateTime?               // FR-5.19: 24h auto-expire
+  isHighlight Boolean   @default(false) // FR-5.21: saved to profile highlights
+
+  // Bookmarks (FR-5.17)
+  bookmarkedBy String[]               // Array of userIds who saved this
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   event    Event?    @relation(fields: [eventId], references: [id])
   comments Comment[]
-  likes    Like[]
 
   @@index([userId, createdAt])
   @@index([eventId])
+  @@index([isStory, expiresAt])
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 9: Comment
+// Purpose: Threaded comments on posts. Self-referencing for reply chains.
+// SRS: FR-5.15 (Threaded comments with replies, likes, @mentions)
+// ═══════════════════════════════════════════════════════════════════════════════
 
 model Comment {
   id        String   @id @default(cuid())
   content   String   @db.Text
   postId    String
   userId    String
-  parentId  String?
+  parentId  String?  // Self-ref for threaded replies
+  likedBy   String[] // Comment likes (FR-5.15)
   createdAt DateTime @default(now())
 
-  post     Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
-  replies  Comment[] @relation("CommentReplies")
+  post    Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies Comment[] @relation("CommentReplies")
 
   @@index([postId, createdAt])
 }
 
-model Like {
-  id        String   @id @default(cuid())
-  postId    String
-  userId    String
-  createdAt DateTime @default(now())
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, userId])
-}
-
-// ─── Notifications ──────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 10: Notification
+// Purpose: Push, in-app, and email notification records.
+// SRS: FR-6.1–6.5 (Push, In-App, Email, Preferences, Batching)
+// ═══════════════════════════════════════════════════════════════════════════════
 
 enum NotificationType {
   EVENT_INVITE
@@ -325,15 +383,4 @@ model Notification {
   sender User? @relation("NotificationSender", fields: [senderId], references: [id])
 
   @@index([userId, read, createdAt])
-}
-
-// ─── Platform Settings ──────────────────────────────────────────────────────
-
-model PlatformSetting {
-  id    String @id @default(cuid())
-  key   String @unique
-  value String @db.Text
-  type  String @default("string")
-
-  @@index([key])
 }
