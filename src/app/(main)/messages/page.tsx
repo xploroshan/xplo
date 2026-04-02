@@ -1,21 +1,47 @@
+"use client"
+
+import { ConversationList } from "@/components/messages/conversation-list"
+import { ChatArea } from "@/components/messages/chat-area"
+import { MOCK_CONVERSATIONS, MOCK_MESSAGES } from "@/lib/mock-data"
+import { useUIStore } from "@/stores/ui-store"
 import { MessageCircle } from "lucide-react"
 
-export const metadata = { title: "Messages" }
-
 export default function MessagesPage() {
-  return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-      <h1 className="text-3xl font-bold text-white mb-8">Messages</h1>
+  const { selectedConversation, setSelectedConversation } = useUIStore()
+  const activeConversation = MOCK_CONVERSATIONS.find((c) => c.id === selectedConversation)
 
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="w-20 h-20 rounded-full bg-zinc-800/50 flex items-center justify-center mb-6">
-          <MessageCircle className="h-8 w-8 text-zinc-600" />
-        </div>
-        <h3 className="text-xl font-semibold text-white mb-2">No messages yet</h3>
-        <p className="text-zinc-500 max-w-sm">
-          When you join an event, you&apos;ll be added to the group chat automatically.
-          Start chatting with your crew here!
-        </p>
+  return (
+    <div className="h-[calc(100vh-3.5rem)] flex border-t border-zinc-800/30">
+      {/* Conversation List */}
+      <div className={`w-full lg:w-80 lg:border-r border-zinc-800/50 bg-zinc-950/50 ${
+        selectedConversation ? "hidden lg:block" : "block"
+      }`}>
+        <ConversationList
+          conversations={MOCK_CONVERSATIONS}
+          selectedId={selectedConversation}
+          onSelect={setSelectedConversation}
+        />
+      </div>
+
+      {/* Chat Area */}
+      <div className={`flex-1 ${selectedConversation ? "block" : "hidden lg:block"}`}>
+        {activeConversation ? (
+          <ChatArea
+            conversation={activeConversation}
+            messages={MOCK_MESSAGES}
+            onBack={() => setSelectedConversation(null)}
+          />
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center text-center p-8">
+            <div className="w-16 h-16 rounded-2xl bg-zinc-800/50 flex items-center justify-center mb-4">
+              <MessageCircle className="h-8 w-8 text-zinc-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-white mb-1">Your Messages</h3>
+            <p className="text-sm text-zinc-500 max-w-xs">
+              Select a conversation to start chatting. Group chats are created automatically when you join events.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )
