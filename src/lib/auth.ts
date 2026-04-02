@@ -8,7 +8,7 @@ import { db } from "@/lib/db"
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
   session: {
-    strategy: "database", // Use Session table (FR-1.8: view/revoke sessions)
+    strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
@@ -80,15 +80,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async session({ session, user }) {
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id
+        token.role = (user as { role?: string }).role ?? "USER"
+      }
+      return token
+    },
+    async session({ session, token }) {
       if (session.user) {
-        // Fetch full user with role from DB
+        session.user.id = token.id as string
+        // Fetch latest role from DB to stay in sync
         const dbUser = await db.user.findUnique({
-          where: { id: user.id },
+          where: { id: token.id as string },
           select: { role: true },
         })
-        session.user.id = user.id
-        session.user.role = dbUser?.role ?? "USER"
+        session.user.role = dbUser?.role ?? (token.role as string) ?? "USER"
       }
       return session
     },
