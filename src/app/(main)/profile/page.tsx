@@ -1,6 +1,8 @@
 import { Settings, MapPin, Calendar, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { OrganizerCta } from "@/components/profile/organizer-cta"
+import { ChangePassword } from "@/components/profile/change-password"
 
 export const metadata = { title: "Profile" }
 
@@ -11,7 +13,7 @@ export default function ProfilePage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 mb-8">
         <Avatar className="h-24 w-24 border-2 border-orange-500/30">
           <AvatarFallback className="bg-orange-500/10 text-orange-500 text-2xl font-bold">
-            RC
+            HK
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
@@ -26,6 +28,16 @@ export default function ProfilePage() {
         <Button variant="outline" className="rounded-xl border-zinc-700 text-zinc-300">
           <Settings className="h-4 w-4 mr-2" /> Edit Profile
         </Button>
+      </div>
+
+      {/* Organizer CTA */}
+      <div className="mb-8">
+        <OrganizerCta />
+      </div>
+
+      {/* Change Password */}
+      <div className="mb-8">
+        <ChangePassword />
       </div>
 
       {/* Stats */}

@@ -3,14 +3,16 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Compass, Mail, Lock, User, Eye, EyeOff, MapPin } from "lucide-react"
+import { Compass, Mail, Lock, User, Eye, EyeOff, MapPin, Link2, Users, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 
+type Role = "USER" | "ORGANIZER"
+
 export default function RegisterPage() {
   const router = useRouter()
-  const [form, setForm] = useState({ name: "", email: "", password: "", city: "" })
+  const [form, setForm] = useState({ name: "", email: "", password: "", city: "", role: "USER" as Role, slug: "" })
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -21,10 +23,21 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
+      const payload: Record<string, string> = {
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        city: form.city,
+        role: form.role,
+      }
+      if (form.role === "ORGANIZER" && form.slug) {
+        payload.slug = form.slug
+      }
+
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       })
 
       const data = await res.json()
@@ -43,6 +56,11 @@ export default function RegisterPage() {
 
   function updateForm(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  function handleSlugInput(value: string) {
+    const sanitized = value.toLowerCase().replace(/[^a-z0-9-]/g, "")
+    setForm((prev) => ({ ...prev, slug: sanitized }))
   }
 
   return (
@@ -65,6 +83,37 @@ export default function RegisterPage() {
               {error}
             </div>
           )}
+
+          {/* Role Toggle */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-zinc-300">I want to</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => updateForm("role", "USER")}
+                className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-all ${
+                  form.role === "USER"
+                    ? "border-orange-500 bg-orange-500/10 text-orange-500"
+                    : "border-zinc-700 bg-zinc-800/50 text-zinc-400 hover:border-zinc-600"
+                }`}
+              >
+                <Users className="h-4 w-4" />
+                Join Events
+              </button>
+              <button
+                type="button"
+                onClick={() => updateForm("role", "ORGANIZER")}
+                className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-all ${
+                  form.role === "ORGANIZER"
+                    ? "border-orange-500 bg-orange-500/10 text-orange-500"
+                    : "border-zinc-700 bg-zinc-800/50 text-zinc-400 hover:border-zinc-600"
+                }`}
+              >
+                <Calendar className="h-4 w-4" />
+                Organize Events
+              </button>
+            </div>
+          </div>
 
           <div className="space-y-2">
             <label className="text-sm font-medium text-zinc-300">Full Name</label>
@@ -132,6 +181,31 @@ export default function RegisterPage() {
               />
             </div>
           </div>
+
+          {/* Organizer Slug Input */}
+          {form.role === "ORGANIZER" && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-300">Profile URL</label>
+              <div className="relative">
+                <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                <Input
+                  type="text"
+                  placeholder="your-name"
+                  value={form.slug}
+                  onChange={(e) => handleSlugInput(e.target.value)}
+                  required
+                  minLength={3}
+                  maxLength={30}
+                  className="pl-10 bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus-visible:ring-orange-500"
+                />
+              </div>
+              {form.slug && (
+                <p className="text-xs text-zinc-500">
+                  Your profile: <span className="text-orange-500">hykrz.com/@{form.slug}</span>
+                </p>
+              )}
+            </div>
+          )}
 
           <Button
             type="submit"

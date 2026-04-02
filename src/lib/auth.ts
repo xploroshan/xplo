@@ -34,14 +34,40 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         })
 
         if (!user || !user.passwordHash) return null
+        if (user.banned) return null
+
+        // Check account lockout
+        if (user.lockedUntil && user.lockedUntil > new Date()) {
+          return null
+        }
 
         const isValid = await bcrypt.compare(
           credentials.password as string,
           user.passwordHash
         )
 
-        if (!isValid) return null
-        if (user.banned) return null
+        if (!isValid) {
+          // Increment failed attempts
+          const attempts = user.failedLoginAttempts + 1
+          await db.user.update({
+            where: { id: user.id },
+            data: {
+              failedLoginAttempts: attempts,
+              lockedUntil: attempts >= 5
+                ? new Date(Date.now() + 15 * 60 * 1000) // Lock for 15 minutes
+                : undefined,
+            },
+          })
+          return null
+        }
+
+        // Reset failed attempts on successful login
+        if (user.failedLoginAttempts > 0) {
+          await db.user.update({
+            where: { id: user.id },
+            data: { failedLoginAttempts: 0, lockedUntil: null },
+          })
+        }
 
         return {
           id: user.id,
