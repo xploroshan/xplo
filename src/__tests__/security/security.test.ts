@@ -74,7 +74,7 @@ describe("Security Tests", () => {
       const response = await registerPOST(request)
       // Zod accepts the name (it's > 2 chars). React's JSX auto-escapes on render.
       // The important thing is no server-side code evaluation happens.
-      expect([201, 400]).toContain(response.status)
+      expect([201, 400, 429]).toContain(response.status)
     })
 
     it("rejects XSS payload in slug (regex blocks special chars)", async () => {
@@ -225,7 +225,7 @@ describe("Security Tests", () => {
 
       // Zod will accept the name (no max length on name), but this shouldn't crash
       const response = await registerPOST(request)
-      expect([201, 400, 409, 500]).toContain(response.status)
+      expect([201, 400, 409, 429, 500]).toContain(response.status)
     })
   })
 })

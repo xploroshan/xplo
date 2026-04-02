@@ -1,4 +1,10 @@
-import { vi } from "vitest"
+import { vi, beforeEach } from "vitest"
+import { resetRateLimitStore } from "@/lib/rate-limit"
+
+// Reset rate limiter between all tests
+beforeEach(() => {
+  resetRateLimitStore()
+})
 
 // Mock next/server
 vi.mock("next/server", async () => {
@@ -85,6 +91,12 @@ vi.mock("@/lib/db", () => ({
     },
     notification: {
       create: vi.fn(),
+    },
+    passwordResetToken: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      deleteMany: vi.fn(),
     },
     $transaction: vi.fn(),
   },

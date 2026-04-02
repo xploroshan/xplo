@@ -2,6 +2,7 @@ import { Settings, MapPin, Calendar, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { OrganizerCta } from "@/components/profile/organizer-cta"
+import { ChangePassword } from "@/components/profile/change-password"
 
 export const metadata = { title: "Profile" }
 
@@ -32,6 +33,11 @@ export default function ProfilePage() {
       {/* Organizer CTA */}
       <div className="mb-8">
         <OrganizerCta />
+      </div>
+
+      {/* Change Password */}
+      <div className="mb-8">
+        <ChangePassword />
       </div>
 
       {/* Stats */}

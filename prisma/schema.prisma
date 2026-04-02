@@ -35,6 +35,8 @@ model User {
   verified      Boolean   @default(false)
   banned        Boolean   @default(false)
   twoFactorEnabled Boolean @default(false) // FR-1.7
+  failedLoginAttempts Int      @default(0)
+  lockedUntil         DateTime?
   emergencyContacts Json? // FR-4.12 SOS contacts
   slug          String?   @unique  // URL slug for /@slug organizer profiles
   socialLinks   Json?              // { instagram?, youtube?, whatsapp?, website? }
@@ -430,4 +432,21 @@ model Follow {
 
   @@unique([followerId, followingId])
   @@index([followingId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 13: PasswordResetToken
+// Purpose: Secure password reset flow. Tokens expire after 1 hour.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  email     String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
 }

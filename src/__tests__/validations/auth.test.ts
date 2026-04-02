@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest"
-import { loginSchema, registerSchema, slugSchema } from "@/lib/validations/auth"
+import {
+  loginSchema,
+  registerSchema,
+  slugSchema,
+  changePasswordSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  passwordSchema,
+} from "@/lib/validations/auth"
 
 describe("loginSchema", () => {
   it("accepts valid login data", () => {
@@ -173,6 +181,86 @@ describe("registerSchema", () => {
 
   it("rejects invalid role", () => {
     const result = registerSchema.safeParse({ ...validUser, role: "ADMIN" })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe("passwordSchema", () => {
+  it("accepts strong password", () => {
+    expect(passwordSchema.safeParse("StrongPass1!").success).toBe(true)
+  })
+
+  it("rejects password without all requirements", () => {
+    expect(passwordSchema.safeParse("short1!").success).toBe(false)
+    expect(passwordSchema.safeParse("nouppercase1!").success).toBe(false)
+    expect(passwordSchema.safeParse("NOLOWERCASE1!").success).toBe(false)
+    expect(passwordSchema.safeParse("NoNumbers!!").success).toBe(false)
+    expect(passwordSchema.safeParse("NoSpecialChar1").success).toBe(false)
+  })
+})
+
+describe("changePasswordSchema", () => {
+  it("accepts valid change password data", () => {
+    const result = changePasswordSchema.safeParse({
+      currentPassword: "OldPass1!",
+      newPassword: "NewPass1!",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects empty current password", () => {
+    const result = changePasswordSchema.safeParse({
+      currentPassword: "",
+      newPassword: "NewPass1!",
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects weak new password", () => {
+    const result = changePasswordSchema.safeParse({
+      currentPassword: "OldPass1!",
+      newPassword: "weak",
+    })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe("forgotPasswordSchema", () => {
+  it("accepts valid email", () => {
+    expect(forgotPasswordSchema.safeParse({ email: "test@example.com" }).success).toBe(true)
+  })
+
+  it("rejects invalid email", () => {
+    expect(forgotPasswordSchema.safeParse({ email: "not-email" }).success).toBe(false)
+  })
+
+  it("rejects missing email", () => {
+    expect(forgotPasswordSchema.safeParse({}).success).toBe(false)
+  })
+})
+
+describe("resetPasswordSchema", () => {
+  it("accepts valid reset data", () => {
+    const result = resetPasswordSchema.safeParse({
+      token: "abc123",
+      newPassword: "NewPass1!",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejects empty token", () => {
+    const result = resetPasswordSchema.safeParse({
+      token: "",
+      newPassword: "NewPass1!",
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejects weak new password", () => {
+    const result = resetPasswordSchema.safeParse({
+      token: "abc123",
+      newPassword: "weak",
+    })
     expect(result.success).toBe(false)
   })
 })

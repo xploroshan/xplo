@@ -4,6 +4,8 @@ import slugify from "slugify"
 import { nanoid } from "nanoid"
 import { db } from "@/lib/db"
 import { registerSchema } from "@/lib/validations/auth"
+import { rateLimit, getClientIp } from "@/lib/rate-limit"
+import { sanitizeInput } from "@/lib/sanitize"
 
 async function generateUniqueSlug(baseName: string): Promise<string> {
   const base = slugify(baseName, { lower: true, strict: true })
@@ -18,6 +20,16 @@ async function generateUniqueSlug(baseName: string): Promise<string> {
 
 export async function POST(request: Request) {
   try {
+    // Rate limit: 5 requests per 15 minutes per IP
+    const ip = getClientIp(request)
+    const { success: allowed } = rateLimit(`register:${ip}`, 5, 15 * 60 * 1000)
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429 }
+      )
+    }
+
     const body = await request.json()
     const parsed = registerSchema.safeParse(body)
 
@@ -28,7 +40,8 @@ export async function POST(request: Request) {
       )
     }
 
-    const { name, email, password, city, role, slug } = parsed.data
+    const { email, password, city, role, slug } = parsed.data
+    const name = sanitizeInput(parsed.data.name)
 
     const existingUser = await db.user.findUnique({ where: { email } })
     if (existingUser) {

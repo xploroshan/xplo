@@ -74,7 +74,7 @@ describe("Load Tests", () => {
       expect(responses.every((r) => r.status === 200)).toBe(true)
     })
 
-    it("50 concurrent registration requests handled correctly", async () => {
+    it("50 concurrent registration requests — rate limiting allows first 5, blocks rest", async () => {
       mockDb.user.findUnique.mockResolvedValue(null)
       mockDb.user.create.mockResolvedValue({ id: "u-1", slug: null } as never)
 
@@ -93,7 +93,10 @@ describe("Load Tests", () => {
       )
 
       const responses = await Promise.all(registrations)
-      expect(responses.every((r) => r.status === 201)).toBe(true)
+      const statuses = responses.map((r) => r.status)
+      // Rate limiting: 5 allowed per IP, rest get 429
+      expect(statuses.filter((s) => s === 201).length).toBe(5)
+      expect(statuses.filter((s) => s === 429).length).toBe(45)
     })
   })
 
