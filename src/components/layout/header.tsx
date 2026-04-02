@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import { Menu, X, Compass } from "lucide-react"
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -16,6 +17,7 @@ const navLinks = [
 export function Header() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const { data: session } = useSession()
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20)
@@ -61,16 +63,26 @@ export function Header() {
 
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center gap-3">
-            <Link href="/login">
-              <Button variant="ghost" className="text-zinc-300 hover:text-white">
-                Log In
-              </Button>
-            </Link>
-            <Link href="/register">
-              <Button variant="glow" className="rounded-xl">
-                Sign Up Free
-              </Button>
-            </Link>
+            {session?.user ? (
+              <Link href="/events">
+                <Button variant="glow" className="rounded-xl">
+                  Go to Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/login">
+                  <Button variant="ghost" className="text-zinc-300 hover:text-white">
+                    Log In
+                  </Button>
+                </Link>
+                <Link href="/register">
+                  <Button variant="glow" className="rounded-xl">
+                    Sign Up Free
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -102,16 +114,26 @@ export function Header() {
                 </Link>
               ))}
               <div className="flex flex-col gap-2 px-4 pt-4 border-t border-zinc-800/50">
-                <Link href="/login">
-                  <Button variant="outline" className="w-full border-zinc-700">
-                    Log In
-                  </Button>
-                </Link>
-                <Link href="/register">
-                  <Button variant="glow" className="w-full">
-                    Sign Up Free
-                  </Button>
-                </Link>
+                {session?.user ? (
+                  <Link href="/events">
+                    <Button variant="glow" className="w-full">
+                      Go to Dashboard
+                    </Button>
+                  </Link>
+                ) : (
+                  <>
+                    <Link href="/login">
+                      <Button variant="outline" className="w-full border-zinc-700">
+                        Log In
+                      </Button>
+                    </Link>
+                    <Link href="/register">
+                      <Button variant="glow" className="w-full">
+                        Sign Up Free
+                      </Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>
