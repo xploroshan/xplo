@@ -13,6 +13,7 @@ import {
   Pin,
   Plus,
   Calendar,
+  Building2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -21,6 +22,7 @@ import { Badge } from "@/components/ui/badge"
 
 const navItems = [
   { label: "Discover", href: "/events", icon: Compass },
+  { label: "Organizations", href: "/organizations", icon: Building2 },
   { label: "Feed", href: "/feed", icon: LayoutGrid },
   { label: "Messages", href: "/messages", icon: MessageCircle },
   { label: "Profile", href: "/profile", icon: User },

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation"
 import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
 import { APP_NAME, APP_URL } from "@/lib/constants"
+import Link from "next/link"
 import { OrganizerHeader } from "@/components/organizer/organizer-header"
 import { OrganizerEventCard } from "@/components/organizer/organizer-event-card"
 import { OrganizerPastEventCard } from "@/components/organizer/organizer-past-event-card"
@@ -27,6 +28,23 @@ async function getOrganizer(slug: string) {
       socialLinks: true,
       createdAt: true,
       role: true,
+      ratingOverride: true,
+      ratingLocked: true,
+      orgMemberships: {
+        select: {
+          role: true,
+          title: true,
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              logo: true,
+              verified: true,
+            },
+          },
+        },
+      },
       _count: {
         select: {
           organizedEvents: true,
@@ -52,15 +70,25 @@ async function getOrganizer(slug: string) {
     }),
   ])
 
+  // Use effective rating (override if locked, otherwise calculated)
+  const effectiveRating = organizer.ratingLocked && organizer.ratingOverride != null
+    ? organizer.ratingOverride
+    : ratingStats._avg.rating
+
   return {
     ...organizer,
     stats: {
       eventsCount: organizer._count.organizedEvents,
       followersCount: organizer._count.followers,
       totalParticipants: participantStats._count,
-      avgRating: ratingStats._avg.rating,
+      avgRating: effectiveRating,
       ratingCount: ratingStats._count.rating,
     },
+    organizations: organizer.orgMemberships.map((m) => ({
+      ...m.organization,
+      role: m.role,
+      title: m.title,
+    })),
   }
 }
 
@@ -197,6 +225,29 @@ export default async function OrganizerProfilePage({ params, searchParams }: Pag
         isAuthenticated={!!session?.user}
         isOwnProfile={session?.user?.id === organizer.id}
       />
+
+      {/* Organization Memberships */}
+      {organizer.organizations && organizer.organizations.length > 0 && (
+        <div className="mt-6 flex flex-wrap gap-2">
+          {organizer.organizations.map((org) => (
+            <Link
+              key={org.id}
+              href={`/org/${org.slug}`}
+              className="inline-flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm hover:border-orange-500/30 transition-colors"
+            >
+              {org.logo ? (
+                <img src={org.logo} alt={org.name} className="h-5 w-5 rounded object-cover" />
+              ) : (
+                <div className="h-5 w-5 rounded bg-orange-500/20 flex items-center justify-center text-[10px] text-orange-500 font-bold">
+                  {org.name.charAt(0)}
+                </div>
+              )}
+              <span className="text-zinc-300">{org.name}</span>
+              <span className="text-[10px] text-zinc-500 bg-zinc-800 px-1.5 py-0.5 rounded">{org.role}</span>
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* Tab Navigation */}
       <div className="flex gap-1 mt-10 mb-6 border-b border-zinc-800">

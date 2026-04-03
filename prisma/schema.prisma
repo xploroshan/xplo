@@ -44,6 +44,10 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Rating override (Super Admin can override individual organizer rating)
+  ratingOverride Float?
+  ratingLocked   Boolean  @default(false) // When true, auto-calc is paused
+
   // Relations
   accounts       Account[]
   sessions       Session[]
@@ -58,6 +62,8 @@ model User {
   pinnedBy          OrganizerPin[]   @relation("OrganizerPinnedBy")
   followers         Follow[]         @relation("UserFollowers")
   following         Follow[]         @relation("UserFollowing")
+  orgMemberships    OrganizationMember[]
+  adminOverrides    RatingOverrideLog[] @relation("AdminOverrides")
 
   @@index([email])
   @@index([city])
@@ -170,6 +176,7 @@ model Event {
   status        EventStatus @default(DRAFT)
   featured      Boolean     @default(false)
   organizerId   String
+  organizationId String?    // Nullable — event can be independent or under an org
 
   // Group Chat — merged from old Group table (FR-3.1 to FR-3.4)
   chatActive      Boolean   @default(true)   // FR-3.3: false = read-only archive
@@ -197,6 +204,7 @@ model Event {
   // Relations
   eventType    EventType          @relation(fields: [eventTypeId], references: [id])
   organizer    User               @relation("OrganizerEvents", fields: [organizerId], references: [id])
+  organization Organization?      @relation("OrgEvents", fields: [organizationId], references: [id])
   participants EventParticipant[]
   messages     Message[]
   posts        Post[]
@@ -204,6 +212,7 @@ model Event {
   @@index([status, startDate])
   @@index([eventTypeId])
   @@index([organizerId])
+  @@index([organizationId])
   @@index([slug])
 }
 
@@ -456,4 +465,98 @@ model PasswordResetToken {
 
   @@index([email])
   @@index([token])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 14: Organization
+// Purpose: Organizations that group event managers under a shared brand.
+//          Orgs have their own public profile, combined rating, and event listings.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+enum OrgStatus {
+  PENDING     // Awaiting admin approval
+  ACTIVE      // Approved, visible on platform
+  SUSPENDED   // Suspended by admin
+}
+
+model Organization {
+  id            String    @id @default(cuid())
+  name          String
+  slug          String    @unique
+  logo          String?
+  banner        String?
+  description   String?   @db.Text
+  website       String?
+  socialLinks   Json?     // { instagram?, youtube?, facebook?, linkedin?, website? }
+  city          String?
+  verified      Boolean   @default(false)
+  featured      Boolean   @default(false)
+
+  // Rating (aggregated from events + admin-overridable)
+  avgRating       Float?              // Auto-calculated from all org events
+  ratingCount     Int      @default(0)
+  ratingOverride  Float?              // Super Admin can set this to override
+  ratingLocked    Boolean  @default(false) // When true, auto-calc is paused
+
+  status        OrgStatus @default(PENDING)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  members       OrganizationMember[]
+  events        Event[]   @relation("OrgEvents")
+
+  @@index([slug])
+  @@index([status])
+  @@index([avgRating])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 15: OrganizationMember
+// Purpose: Links users to organizations with a specific role.
+//          OWNER = created the org. ADMIN = manage members/profile.
+//          EVENT_MANAGER = can create events under org banner.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+enum OrgRole {
+  OWNER          // Created the org, full control
+  ADMIN          // Can manage members, edit org profile
+  EVENT_MANAGER  // Can create events under org banner
+}
+
+model OrganizationMember {
+  id              String    @id @default(cuid())
+  userId          String
+  organizationId  String
+  role            OrgRole   @default(EVENT_MANAGER)
+  title           String?   // "Lead Trek Guide", "Ride Captain", etc.
+  joinedAt        DateTime  @default(now())
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 16: RatingOverrideLog
+// Purpose: Audit trail for Super Admin rating overrides on orgs, users, or events.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model RatingOverrideLog {
+  id              String   @id @default(cuid())
+  targetType      String   // "organization" | "user" | "event"
+  targetId        String
+  previousValue   Float?
+  newValue        Float?
+  reason          String   @db.Text
+  adminId         String
+  createdAt       DateTime @default(now())
+
+  admin           User     @relation("AdminOverrides", fields: [adminId], references: [id])
+
+  @@index([targetType, targetId])
+  @@index([adminId])
 }

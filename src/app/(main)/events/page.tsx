@@ -1,8 +1,9 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { motion } from "framer-motion"
-import { Search, SlidersHorizontal } from "lucide-react"
+import Link from "next/link"
+import { Search, SlidersHorizontal, Building2, ArrowUpDown } from "lucide-react"
 import { FeaturedCarousel } from "@/components/events/featured-carousel"
 import { CategoryFilter } from "@/components/events/category-filter"
 import { UpcomingRow } from "@/components/events/upcoming-row"
@@ -14,6 +15,7 @@ import { useUIStore } from "@/stores/ui-store"
 
 export default function EventsPage() {
   const { activeCategory } = useUIStore()
+  const [sortBy, setSortBy] = useState<"date" | "rating">("date")
 
   const featuredEvents = MOCK_EVENTS.filter((e) => e.featured)
 
@@ -27,9 +29,14 @@ export default function EventsPage() {
   }, [])
 
   const filteredEvents = useMemo(() => {
-    if (!activeCategory) return MOCK_EVENTS
-    return MOCK_EVENTS.filter((e) => e.eventType.slug === activeCategory)
-  }, [activeCategory])
+    let events = activeCategory
+      ? MOCK_EVENTS.filter((e) => e.eventType.slug === activeCategory)
+      : [...MOCK_EVENTS]
+    if (sortBy === "rating") {
+      events = events.sort((a, b) => (b.organizer.rating || 0) - (a.organizer.rating || 0))
+    }
+    return events
+  }, [activeCategory, sortBy])
 
   const eventCounts = useMemo(() => {
     const counts: Record<string, number> = {}
@@ -85,9 +92,18 @@ export default function EventsPage() {
                   ? `${MOCK_EVENTS.find((e) => e.eventType.slug === activeCategory)?.eventType.name || "Events"}`
                   : "All Events"}
               </h2>
-              <span className="text-sm text-zinc-500">
-                {filteredEvents.length} events
-              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setSortBy(sortBy === "date" ? "rating" : "date")}
+                  className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors px-2.5 py-1.5 rounded-lg border border-zinc-800 hover:border-zinc-700"
+                >
+                  <ArrowUpDown className="h-3.5 w-3.5" />
+                  {sortBy === "date" ? "Sort by Rating" : "Sort by Date"}
+                </button>
+                <span className="text-sm text-zinc-500">
+                  {filteredEvents.length} events
+                </span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -101,6 +117,17 @@ export default function EventsPage() {
         {/* Desktop Sidebar */}
         <div className="hidden lg:block w-72 shrink-0 space-y-6">
           <PopularOrganizers organizers={MOCK_ORGANIZERS.slice(0, 5)} />
+
+          <Link
+            href="/organizations"
+            className="flex items-center gap-3 rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-5 hover:border-orange-500/30 transition-colors group"
+          >
+            <Building2 className="h-8 w-8 text-orange-500 group-hover:scale-110 transition-transform" />
+            <div>
+              <h3 className="text-sm font-semibold text-white">Organizations</h3>
+              <p className="text-xs text-zinc-500">Browse verified org profiles</p>
+            </div>
+          </Link>
 
           <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-5">
             <h3 className="text-sm font-semibold text-white mb-3">Platform Stats</h3>
