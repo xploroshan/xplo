@@ -98,10 +98,15 @@ export function EventCard({ event, index = 0 }: { event: MockEvent; index?: numb
               {event.title}
             </h3>
 
-            <div className="flex items-center gap-1.5 text-sm text-zinc-400 mb-3">
+            <div className="flex items-center gap-1.5 text-sm text-zinc-400 mb-1">
               <MapPin className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
               <span className="truncate">{event.destination.address}</span>
             </div>
+            {"city" in event && (event as unknown as { city: string }).city && (
+              <div className="text-[11px] text-zinc-500 mb-2 ml-5">
+                From {(event as unknown as { city: string }).city}
+              </div>
+            )}
 
             {/* Organizer + Participants Row */}
             <div className="flex items-center justify-between mb-3">
