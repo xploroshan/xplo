@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   MapPin,
@@ -17,9 +17,13 @@ import {
   Footprints,
   Waves,
   RotateCcw,
+  Locate,
+  Globe,
 } from "lucide-react"
 import { useUIStore } from "@/stores/ui-store"
-import { getCitiesForCountry } from "@/lib/locations"
+import { searchCities, getNearbyCities, type WorldCity } from "@/lib/world-cities"
+import { searchDestinations, getPopularDestinations, getNearbyDestinations, type WorldDestination } from "@/lib/world-destinations"
+import { useGeolocation } from "@/hooks/use-geolocation"
 import { DEFAULT_EVENT_TYPES } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 
@@ -48,15 +52,30 @@ export function SmartFilterBar({ availableDestinations, totalResults }: SmartFil
   const [citySearch, setCitySearch] = useState("")
   const [destSearch, setDestSearch] = useState("")
   const containerRef = useRef<HTMLDivElement>(null)
+  const { lat, lng, loading: geoLoading } = useGeolocation()
 
-  const cities = getCitiesForCountry(filters.country)
-  const filteredCities = citySearch
-    ? cities.filter((c) => c.name.toLowerCase().includes(citySearch.toLowerCase()))
-    : cities
+  // City search: show nearby cities when no search, search results when typing
+  const displayCities = useMemo((): (WorldCity & { distance?: number })[] => {
+    if (citySearch.trim()) {
+      return searchCities(citySearch, 24)
+    }
+    if (lat !== null && lng !== null) {
+      return getNearbyCities(lat, lng, 12)
+    }
+    // Fallback: popular global cities
+    return searchCities("", 0) // empty — we'll show hardcoded popular below
+  }, [citySearch, lat, lng])
 
-  const filteredDestinations = destSearch
-    ? availableDestinations.filter((d) => d.toLowerCase().includes(destSearch.toLowerCase()))
-    : availableDestinations
+  // Destination search: show popular/nearby when no search, search results when typing
+  const displayDestinations = useMemo((): (WorldDestination & { distance?: number })[] => {
+    if (destSearch.trim()) {
+      return searchDestinations(destSearch, 24)
+    }
+    if (lat !== null && lng !== null) {
+      return getNearbyDestinations(lat, lng, 16)
+    }
+    return getPopularDestinations(16)
+  }, [destSearch, lat, lng])
 
   const hasActiveFilters = filters.city || filters.dateFrom || filters.eventType || filters.destination
 
@@ -239,6 +258,7 @@ export function SmartFilterBar({ availableDestinations, totalResults }: SmartFil
 
       {/* Dropdown Panels */}
       <AnimatePresence>
+        {/* ── CITY DROPDOWN ── */}
         {openDropdown === "city" && (
           <DropdownPanel>
             <div className="p-3">
@@ -246,20 +266,45 @@ export function SmartFilterBar({ availableDestinations, totalResults }: SmartFil
                 <Search className="h-4 w-4 text-zinc-500" />
                 <input
                   type="text"
-                  placeholder="Search cities..."
+                  placeholder="Search any city worldwide..."
                   value={citySearch}
                   onChange={(e) => setCitySearch(e.target.value)}
                   className="bg-transparent text-sm text-white placeholder:text-zinc-500 outline-none w-full"
                   autoFocus
                 />
+                {citySearch && (
+                  <button onClick={() => setCitySearch("")} className="text-zinc-500 hover:text-white">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-2 px-1">
-                {citySearch ? "Results" : "Popular Cities"}
+
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <div className="flex items-center gap-1.5">
+                  {!citySearch && lat !== null && (
+                    <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">
+                      <Locate className="h-3 w-3" />
+                      Near You
+                    </span>
+                  )}
+                  {!citySearch && lat === null && !geoLoading && (
+                    <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+                      <Globe className="h-3 w-3" />
+                      Popular Cities
+                    </span>
+                  )}
+                  {citySearch && (
+                    <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+                      Results for &ldquo;{citySearch}&rdquo;
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 max-h-64 overflow-y-auto">
-                {(citySearch ? filteredCities : filteredCities.filter((c) => c.popular)).map((city) => (
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 max-h-72 overflow-y-auto scrollbar-none">
+                {(citySearch ? displayCities : (displayCities.length > 0 ? displayCities : FALLBACK_POPULAR_CITIES)).map((city) => (
                   <button
-                    key={city.name}
+                    key={`${city.name}-${city.country}`}
                     onClick={() => { setCity(city.name); setOpenDropdown(null); setCitySearch("") }}
                     className={cn(
                       "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-all text-left",
@@ -269,25 +314,36 @@ export function SmartFilterBar({ availableDestinations, totalResults }: SmartFil
                     )}
                   >
                     <MapPin className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
-                    <div>
-                      <div className="font-medium">{city.name}</div>
-                      <div className="text-[10px] text-zinc-500">{city.state}</div>
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{city.name}</div>
+                      <div className="text-[10px] text-zinc-500 truncate">
+                        {city.region}, {city.country}
+                        {"distance" in city && typeof city.distance === "number" && (
+                          <span className="ml-1 text-emerald-500">
+                            {city.distance < 100 ? `${Math.round(city.distance)} km` : `${Math.round(city.distance)} km`}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </button>
                 ))}
+                {citySearch && displayCities.length === 0 && (
+                  <div className="col-span-full text-center py-6 text-zinc-500 text-sm">
+                    No cities found for &ldquo;{citySearch}&rdquo;
+                  </div>
+                )}
               </div>
+
               {!citySearch && (
-                <button
-                  onClick={() => setCitySearch(" ")}
-                  className="mt-2 text-xs text-orange-400 hover:text-orange-300 transition-colors px-1"
-                >
-                  View all cities →
-                </button>
+                <p className="mt-2 text-[11px] text-zinc-600 px-1">
+                  Type to search 250+ cities across all continents
+                </p>
               )}
             </div>
           </DropdownPanel>
         )}
 
+        {/* ── DATE DROPDOWN ── */}
         {openDropdown === "date" && (
           <DropdownPanel>
             <div className="p-4">
@@ -329,6 +385,7 @@ export function SmartFilterBar({ availableDestinations, totalResults }: SmartFil
           </DropdownPanel>
         )}
 
+        {/* ── EVENT TYPE DROPDOWN ── */}
         {openDropdown === "type" && (
           <DropdownPanel>
             <div className="p-3">
@@ -385,6 +442,7 @@ export function SmartFilterBar({ availableDestinations, totalResults }: SmartFil
           </DropdownPanel>
         )}
 
+        {/* ── DESTINATION DROPDOWN ── */}
         {openDropdown === "destination" && (
           <DropdownPanel>
             <div className="p-3">
@@ -392,14 +450,41 @@ export function SmartFilterBar({ availableDestinations, totalResults }: SmartFil
                 <Search className="h-4 w-4 text-zinc-500" />
                 <input
                   type="text"
-                  placeholder="Search destinations..."
+                  placeholder="Search destinations worldwide..."
                   value={destSearch}
                   onChange={(e) => setDestSearch(e.target.value)}
                   className="bg-transparent text-sm text-white placeholder:text-zinc-500 outline-none w-full"
                   autoFocus
                 />
+                {destSearch && (
+                  <button onClick={() => setDestSearch("")} className="text-zinc-500 hover:text-white">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 max-h-64 overflow-y-auto">
+
+              <div className="flex items-center gap-2 mb-2 px-1">
+                {!destSearch && lat !== null && (
+                  <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-400 font-semibold">
+                    <Locate className="h-3 w-3" />
+                    Nearby Destinations
+                  </span>
+                )}
+                {!destSearch && lat === null && (
+                  <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+                    <Globe className="h-3 w-3" />
+                    Popular Destinations
+                  </span>
+                )}
+                {destSearch && (
+                  <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">
+                    Results for &ldquo;{destSearch}&rdquo;
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 max-h-72 overflow-y-auto scrollbar-none">
+                {/* Any Destination option */}
                 <button
                   onClick={() => { setDestination(null); setOpenDropdown(null); setDestSearch("") }}
                   className={cn(
@@ -412,9 +497,11 @@ export function SmartFilterBar({ availableDestinations, totalResults }: SmartFil
                   <Navigation className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
                   <span className="font-medium">Any Destination</span>
                 </button>
-                {filteredDestinations.map((dest) => (
+
+                {/* Event-specific destinations (from current events) */}
+                {!destSearch && availableDestinations.length > 0 && availableDestinations.map((dest) => (
                   <button
-                    key={dest}
+                    key={`evt-${dest}`}
                     onClick={() => { setDestination(dest); setOpenDropdown(null); setDestSearch("") }}
                     className={cn(
                       "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-all text-left",
@@ -423,11 +510,53 @@ export function SmartFilterBar({ availableDestinations, totalResults }: SmartFil
                         : "text-zinc-300 hover:bg-zinc-800 border border-transparent"
                     )}
                   >
-                    <Navigation className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
-                    <span className="font-medium">{dest}</span>
+                    <Navigation className="h-3.5 w-3.5 shrink-0 text-orange-500/60" />
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{dest}</div>
+                      <div className="text-[10px] text-orange-500/50">Active events</div>
+                    </div>
                   </button>
                 ))}
+
+                {/* World destinations */}
+                {displayDestinations.map((dest) => (
+                  <button
+                    key={`${dest.name}-${dest.country}`}
+                    onClick={() => { setDestination(dest.name); setOpenDropdown(null); setDestSearch("") }}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-all text-left",
+                      filters.destination === dest.name
+                        ? "bg-orange-500/15 text-orange-400 border border-orange-500/30"
+                        : "text-zinc-300 hover:bg-zinc-800 border border-transparent"
+                    )}
+                  >
+                    <Navigation className="h-3.5 w-3.5 shrink-0 text-zinc-500" />
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">{dest.name}</div>
+                      <div className="text-[10px] text-zinc-500 truncate">
+                        {dest.country}
+                        {dest.tags.length > 0 && (
+                          <span className="ml-1 text-zinc-600">
+                            · {dest.tags.slice(0, 2).join(", ")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+
+                {destSearch && displayDestinations.length === 0 && (
+                  <div className="col-span-full text-center py-6 text-zinc-500 text-sm">
+                    No destinations found for &ldquo;{destSearch}&rdquo;
+                  </div>
+                )}
               </div>
+
+              {!destSearch && (
+                <p className="mt-2 text-[11px] text-zinc-600 px-1">
+                  Search 150+ tourist, trekking & hiking destinations worldwide
+                </p>
+              )}
             </div>
           </DropdownPanel>
         )}
@@ -452,6 +581,24 @@ export function SmartFilterBar({ availableDestinations, totalResults }: SmartFil
     </div>
   )
 }
+
+// ─── Fallback popular cities when geolocation is unavailable ────────────────
+const FALLBACK_POPULAR_CITIES: WorldCity[] = [
+  { name: "Bangalore", region: "Karnataka", country: "India", continent: "Asia", lat: 12.97, lng: 77.59 },
+  { name: "Mumbai", region: "Maharashtra", country: "India", continent: "Asia", lat: 19.08, lng: 72.88 },
+  { name: "Delhi", region: "Delhi", country: "India", continent: "Asia", lat: 28.70, lng: 77.10 },
+  { name: "London", region: "England", country: "United Kingdom", continent: "Europe", lat: 51.51, lng: -0.13 },
+  { name: "New York", region: "New York", country: "United States", continent: "North America", lat: 40.71, lng: -74.01 },
+  { name: "Dubai", region: "Dubai", country: "UAE", continent: "Asia", lat: 25.20, lng: 55.27 },
+  { name: "Singapore", region: "Singapore", country: "Singapore", continent: "Asia", lat: 1.35, lng: 103.82 },
+  { name: "Tokyo", region: "Tokyo", country: "Japan", continent: "Asia", lat: 35.68, lng: 139.65 },
+  { name: "Sydney", region: "New South Wales", country: "Australia", continent: "Oceania", lat: -33.87, lng: 151.21 },
+  { name: "Bangkok", region: "Bangkok", country: "Thailand", continent: "Asia", lat: 13.76, lng: 100.50 },
+  { name: "Paris", region: "Île-de-France", country: "France", continent: "Europe", lat: 48.86, lng: 2.35 },
+  { name: "Cape Town", region: "Western Cape", country: "South Africa", continent: "Africa", lat: -33.92, lng: 18.42 },
+]
+
+// ─── Sub-components ─────────────────────────────────────────────────────────
 
 function FilterTag({
   label,
