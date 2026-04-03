@@ -20,8 +20,10 @@ export interface MockEvent {
   description: string
   startDate: string
   endDate: string | null
+  city: string
+  country: string
   startLocation: { address: string }
-  destination: { address: string }
+  destination: { address: string; city?: string }
   capacity: number
   registeredCount: number
   price: number
@@ -111,7 +113,7 @@ export const MOCK_EVENTS: MockEvent[] = [
   {
     id: "evt-1", title: "Dawn Ride to Nandi Hills", slug: "dawn-ride-nandi-hills",
     description: "Join us for a breathtaking sunrise ride to Nandi Hills. We'll cruise through the early morning mist on NH44, stop for chai at the hilltop, and catch the sunrise above the clouds. All skill levels welcome — pace will be moderate.",
-    startDate: day(2), endDate: day(2), startLocation: { address: "Hebbal Flyover, Bangalore" }, destination: { address: "Nandi Hills, Chikkaballapur" },
+    startDate: day(2), endDate: day(2), city: "Bangalore", country: "India", startLocation: { address: "Hebbal Flyover, Bangalore" }, destination: { address: "Nandi Hills, Chikkaballapur", city: "Chikkaballapur" },
     capacity: 30, registeredCount: 22, price: 0, currency: "INR", coverImage: null, status: "OPEN", featured: true,
     eventType: { name: "Motorcycle Rides", slug: "motorcycle-rides", icon: "Bike", color: "#f97316" },
     organizer: MOCK_ORGANIZERS[0],
@@ -120,7 +122,7 @@ export const MOCK_EVENTS: MockEvent[] = [
   {
     id: "evt-2", title: "Coorg Coffee Trail Trek", slug: "coorg-coffee-trail-trek",
     description: "A 2-day trek through Coorg's lush coffee plantations. We'll hike through misty trails, visit a working plantation, camp under the stars, and explore Dubare elephant camp.",
-    startDate: day(5), endDate: day(6), startLocation: { address: "Madikeri Bus Stand" }, destination: { address: "Tadiandamol Peak, Coorg" },
+    startDate: day(5), endDate: day(6), city: "Bangalore", country: "India", startLocation: { address: "Madikeri Bus Stand" }, destination: { address: "Tadiandamol Peak, Coorg", city: "Coorg" },
     capacity: 20, registeredCount: 18, price: 2500, currency: "INR", coverImage: null, status: "OPEN", featured: true,
     eventType: { name: "Treks & Hikes", slug: "treks-hikes", icon: "Mountain", color: "#8b5cf6" },
     organizer: MOCK_ORGANIZERS[1],
@@ -129,7 +131,7 @@ export const MOCK_EVENTS: MockEvent[] = [
   {
     id: "evt-3", title: "Cubbon Park Morning Ride", slug: "cubbon-park-morning-ride",
     description: "Easy-paced cycling through Cubbon Park and surrounding areas. Perfect for beginners — we'll cover 15km at a relaxed pace with a coffee stop midway.",
-    startDate: day(1), endDate: null, startLocation: { address: "Cubbon Park Main Gate" }, destination: { address: "Cubbon Park Loop" },
+    startDate: day(1), endDate: null, city: "Bangalore", country: "India", startLocation: { address: "Cubbon Park Main Gate" }, destination: { address: "Cubbon Park Loop", city: "Bangalore" },
     capacity: 25, registeredCount: 12, price: 0, currency: "INR", coverImage: null, status: "OPEN", featured: false,
     eventType: { name: "Bicycle Rides", slug: "bicycle-rides", icon: "Bicycle", color: "#22c55e" },
     organizer: MOCK_ORGANIZERS[2],
@@ -138,7 +140,7 @@ export const MOCK_EVENTS: MockEvent[] = [
   {
     id: "evt-4", title: "Goa Coastal Highway Run", slug: "goa-coastal-highway-run",
     description: "A scenic ride along Goa's beautiful coastal highways. Start from Panjim, ride through beach roads, stop at Arambol for lunch, and return via the interior route.",
-    startDate: day(8), endDate: day(9), startLocation: { address: "Panjim, Goa" }, destination: { address: "Arambol Beach, Goa" },
+    startDate: day(8), endDate: day(9), city: "Goa", country: "India", startLocation: { address: "Panjim, Goa" }, destination: { address: "Arambol Beach, Goa", city: "Goa" },
     capacity: 15, registeredCount: 15, price: 1500, currency: "INR", coverImage: null, status: "CLOSED", featured: true,
     eventType: { name: "Road Trips", slug: "road-trips", icon: "Car", color: "#f59e0b" },
     organizer: MOCK_ORGANIZERS[3],
@@ -147,7 +149,7 @@ export const MOCK_EVENTS: MockEvent[] = [
   {
     id: "evt-5", title: "Sakleshpur Monsoon Trek", slug: "sakleshpur-monsoon-trek",
     description: "Experience the Western Ghats in full monsoon glory. Green hills, waterfalls, and misty trails await. Moderate difficulty — good fitness required.",
-    startDate: day(12), endDate: day(13), startLocation: { address: "Sakleshpur Town" }, destination: { address: "Bisle Ghat Viewpoint" },
+    startDate: day(12), endDate: day(13), city: "Bangalore", country: "India", startLocation: { address: "Sakleshpur Town" }, destination: { address: "Bisle Ghat Viewpoint", city: "Sakleshpur" },
     capacity: 18, registeredCount: 8, price: 1800, currency: "INR", coverImage: null, status: "OPEN", featured: false,
     eventType: { name: "Treks & Hikes", slug: "treks-hikes", icon: "Mountain", color: "#8b5cf6" },
     organizer: MOCK_ORGANIZERS[1],
@@ -156,7 +158,7 @@ export const MOCK_EVENTS: MockEvent[] = [
   {
     id: "evt-6", title: "Pondicherry Weekend Getaway", slug: "pondicherry-weekend-getaway",
     description: "Road trip from Bangalore to Pondicherry! French Quarter walks, beach time, and amazing food. Convoy of 8 cars — bring your road trip playlist.",
-    startDate: day(15), endDate: day(16), startLocation: { address: "Electronic City, Bangalore" }, destination: { address: "White Town, Pondicherry" },
+    startDate: day(15), endDate: day(16), city: "Bangalore", country: "India", startLocation: { address: "Electronic City, Bangalore" }, destination: { address: "White Town, Pondicherry", city: "Pondicherry" },
     capacity: 32, registeredCount: 20, price: 3500, currency: "INR", coverImage: null, status: "OPEN", featured: true,
     eventType: { name: "Group Travel", slug: "group-travel", icon: "Plane", color: "#3b82f6" },
     organizer: MOCK_ORGANIZERS[3],
@@ -165,7 +167,7 @@ export const MOCK_EVENTS: MockEvent[] = [
   {
     id: "evt-7", title: "Kabini Riverside Camping", slug: "kabini-riverside-camping",
     description: "Camp by the Kabini river. Bonfire, stargazing, coracle rides, and wildlife sighting. Tents and meals included.",
-    startDate: day(4), endDate: day(5), startLocation: { address: "Mysore Road Toll" }, destination: { address: "Kabini Backwaters" },
+    startDate: day(4), endDate: day(5), city: "Mysore", country: "India", startLocation: { address: "Mysore Road Toll" }, destination: { address: "Kabini Backwaters", city: "Kabini" },
     capacity: 24, registeredCount: 19, price: 2200, currency: "INR", coverImage: null, status: "OPEN", featured: false,
     eventType: { name: "Camping", slug: "camping", icon: "Tent", color: "#10b981" },
     organizer: MOCK_ORGANIZERS[1],
@@ -174,7 +176,7 @@ export const MOCK_EVENTS: MockEvent[] = [
   {
     id: "evt-8", title: "Sunday 10K Fun Run", slug: "sunday-10k-fun-run",
     description: "Weekly community 10K run through Bangalore's lake trails. All paces welcome — walkers, joggers, and runners. Free refreshments at the finish.",
-    startDate: day(3), endDate: null, startLocation: { address: "Ulsoor Lake" }, destination: { address: "Cubbon Park" },
+    startDate: day(3), endDate: null, city: "Bangalore", country: "India", startLocation: { address: "Ulsoor Lake" }, destination: { address: "Cubbon Park", city: "Bangalore" },
     capacity: 50, registeredCount: 35, price: 0, currency: "INR", coverImage: null, status: "OPEN", featured: false,
     eventType: { name: "Running Events", slug: "running-events", icon: "Footprints", color: "#ef4444" },
     organizer: MOCK_ORGANIZERS[5],
@@ -183,7 +185,7 @@ export const MOCK_EVENTS: MockEvent[] = [
   {
     id: "evt-9", title: "Gokarna Beach Kayaking", slug: "gokarna-beach-kayaking",
     description: "Kayaking along Gokarna's pristine beaches. Paddle from Kudle Beach to Half Moon Beach with expert guides. No prior experience needed.",
-    startDate: day(10), endDate: null, startLocation: { address: "Kudle Beach, Gokarna" }, destination: { address: "Half Moon Beach, Gokarna" },
+    startDate: day(10), endDate: null, city: "Gokarna", country: "India", startLocation: { address: "Kudle Beach, Gokarna" }, destination: { address: "Half Moon Beach, Gokarna", city: "Gokarna" },
     capacity: 12, registeredCount: 7, price: 1200, currency: "INR", coverImage: null, status: "OPEN", featured: false,
     eventType: { name: "Water Sports", slug: "water-sports", icon: "Waves", color: "#06b6d4" },
     organizer: MOCK_ORGANIZERS[4],
@@ -192,7 +194,7 @@ export const MOCK_EVENTS: MockEvent[] = [
   {
     id: "evt-10", title: "Midnight Highway Ride", slug: "midnight-highway-ride",
     description: "Late-night highway blast to Lepakshi and back. 240km round trip under the stars. Helmet and full gear mandatory.",
-    startDate: day(6), endDate: day(7), startLocation: { address: "Kempegowda Airport Road" }, destination: { address: "Lepakshi Temple, Anantapur" },
+    startDate: day(6), endDate: day(7), city: "Bangalore", country: "India", startLocation: { address: "Kempegowda Airport Road" }, destination: { address: "Lepakshi Temple, Anantapur", city: "Anantapur" },
     capacity: 20, registeredCount: 16, price: 0, currency: "INR", coverImage: null, status: "OPEN", featured: true,
     eventType: { name: "Motorcycle Rides", slug: "motorcycle-rides", icon: "Bike", color: "#f97316" },
     organizer: MOCK_ORGANIZERS[0],
@@ -201,7 +203,7 @@ export const MOCK_EVENTS: MockEvent[] = [
   {
     id: "evt-11", title: "Bannerghatta Century Ride", slug: "bannerghatta-century-ride",
     description: "100km cycling challenge through Bannerghatta National Park area. Intermediate-level ride with rolling hills. Support vehicle provided.",
-    startDate: day(9), endDate: null, startLocation: { address: "Jayanagar 4th Block" }, destination: { address: "Bannerghatta Loop" },
+    startDate: day(9), endDate: null, city: "Bangalore", country: "India", startLocation: { address: "Jayanagar 4th Block" }, destination: { address: "Bannerghatta Loop", city: "Bangalore" },
     capacity: 20, registeredCount: 14, price: 500, currency: "INR", coverImage: null, status: "OPEN", featured: false,
     eventType: { name: "Bicycle Rides", slug: "bicycle-rides", icon: "Bicycle", color: "#22c55e" },
     organizer: MOCK_ORGANIZERS[2],
@@ -210,7 +212,7 @@ export const MOCK_EVENTS: MockEvent[] = [
   {
     id: "evt-12", title: "Chikmagalur Trail Marathon", slug: "chikmagalur-trail-marathon",
     description: "21km trail run through Chikmagalur's coffee estates and hill trails. A challenging but rewarding course with stunning views.",
-    startDate: day(20), endDate: null, startLocation: { address: "Chikmagalur Town" }, destination: { address: "Mullayanagiri Base" },
+    startDate: day(20), endDate: null, city: "Chikmagalur", country: "India", startLocation: { address: "Chikmagalur Town" }, destination: { address: "Mullayanagiri Base", city: "Chikmagalur" },
     capacity: 40, registeredCount: 28, price: 1000, currency: "INR", coverImage: null, status: "OPEN", featured: false,
     eventType: { name: "Running Events", slug: "running-events", icon: "Footprints", color: "#ef4444" },
     organizer: MOCK_ORGANIZERS[5],
