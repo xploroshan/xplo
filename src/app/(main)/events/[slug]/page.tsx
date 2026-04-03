@@ -23,6 +23,8 @@ import { KnowledgePanel } from "@/components/events/knowledge-panel"
 import { PlacesOfInterest } from "@/components/events/places-of-interest"
 import { AccommodationFinder } from "@/components/events/accommodation-finder"
 import { DifficultyBadge } from "@/components/events/difficulty-badge"
+import { OrgBadge } from "@/components/organizations/org-badge"
+import { RatingSubmission } from "@/components/ratings/rating-submission"
 import { MOCK_EVENTS } from "@/lib/mock-data"
 
 export default function EventDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -96,6 +98,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ slug: st
               <span>Organized by</span>
               <span className="text-white font-medium">{event.organizer.name}</span>
               {event.organizer.verified && <CheckCircle2 className="h-4 w-4 text-orange-500" />}
+              {(() => {
+                const org = (event as unknown as { organization?: { name: string; slug: string; logo?: string; verified?: boolean } }).organization
+                return org ? (
+                  <OrgBadge name={org.name} slug={org.slug} logo={org.logo} verified={org.verified} />
+                ) : null
+              })()}
             </div>
           </div>
         </div>
@@ -212,6 +220,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ slug: st
               )}
             </div>
           </div>
+
+          {/* Rating Submission (for completed events) */}
+          {(event.status === "COMPLETED" || event.status === "ARCHIVED") && (
+            <RatingSubmission eventId={event.id} />
+          )}
 
           {/* Similar Events */}
           {similarEvents.length > 0 && (

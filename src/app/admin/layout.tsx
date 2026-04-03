@@ -11,6 +11,8 @@ import {
   Shield,
   Compass,
   ChevronRight,
+  Building2,
+  Star,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -18,6 +20,8 @@ const adminNav = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Users", href: "/admin/users", icon: Users },
   { label: "Events", href: "/admin/events", icon: Calendar },
+  { label: "Organizations", href: "/admin/organizations", icon: Building2 },
+  { label: "Ratings", href: "/admin/ratings", icon: Star },
   { label: "Event Types", href: "/admin/event-types", icon: Tags },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ]

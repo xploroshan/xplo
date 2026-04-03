@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Calendar, MapPin, Users, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -8,13 +8,30 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AiEnhanceButton } from "@/components/events/ai-enhance-button"
 import { AiSuggestionsPanel } from "@/components/events/ai-suggestions-panel"
+import { OrgSelector } from "@/components/organizations/org-selector"
 import Link from "next/link"
 import { DEFAULT_EVENT_TYPES } from "@/lib/constants"
+
+interface UserOrg {
+  id: string
+  name: string
+  slug: string
+  logo: string | null
+}
 
 export default function CreateEventPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
+  const [userOrgs, setUserOrgs] = useState<UserOrg[]>([])
   const [aiSuggestions, setAiSuggestions] = useState<Array<{ key: string; label: string; value: string | string[] }> | null>(null)
+
+  useEffect(() => {
+    fetch("/api/organizations?mine=true")
+      .then((res) => res.ok ? res.json() : { organizations: [] })
+      .then((data) => setUserOrgs(data.organizations || []))
+      .catch(() => {})
+  }, [])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -38,6 +55,19 @@ export default function CreateEventPage() {
       <h1 className="text-3xl font-bold text-white mb-8">Create Event</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Organization Selector */}
+        {userOrgs.length > 0 && (
+          <Card className="border-zinc-800 bg-zinc-900/50">
+            <CardContent className="pt-6">
+              <OrgSelector
+                value={selectedOrgId}
+                onChange={setSelectedOrgId}
+                organizations={userOrgs}
+              />
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="border-zinc-800 bg-zinc-900/50">
           <CardHeader>
             <CardTitle className="text-white">Event Details</CardTitle>
