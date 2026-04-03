@@ -8,6 +8,7 @@ import { CategoryFilter } from "@/components/events/category-filter"
 import { UpcomingRow } from "@/components/events/upcoming-row"
 import { EventCard } from "@/components/events/event-card"
 import { PopularOrganizers } from "@/components/events/popular-organizers"
+import { RecommendedEvents } from "@/components/events/recommended-events"
 import { MOCK_EVENTS, MOCK_ORGANIZERS } from "@/lib/mock-data"
 import { useUIStore } from "@/stores/ui-store"
 
@@ -72,6 +73,9 @@ export default function EventsPage() {
           {weekendEvents.length > 0 && !activeCategory && (
             <UpcomingRow events={weekendEvents} title="Happening This Week" />
           )}
+
+          {/* AI Recommended Events */}
+          {!activeCategory && <RecommendedEvents />}
 
           {/* Main Event Grid */}
           <section>

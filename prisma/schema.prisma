@@ -40,6 +40,7 @@ model User {
   emergencyContacts Json? // FR-4.12 SOS contacts
   slug          String?   @unique  // URL slug for /@slug organizer profiles
   socialLinks   Json?              // { instagram?, youtube?, whatsapp?, website? }
+  aiPreferences Json?              // { experienceLevel, fitnessLevel, preferredDifficulty }
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -183,6 +184,12 @@ model Event {
 
   // Post-Event Data (FR-4.23)
   routeSummary Json?                         // { distance, duration, avgSpeed, maxSpeed, elevationProfile, routeMapUrl }
+
+  // AI-Generated Data (cached to avoid repeated API calls)
+  aiAssessment        Json?                  // Cached difficulty/safety assessment from AI
+  difficulty          String?                // "beginner" | "intermediate" | "advanced" | "expert"
+  nearbyPoi           Json?                  // Cached places of interest from AI
+  nearbyAccommodation Json?                  // Cached accommodation recommendations from AI
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
