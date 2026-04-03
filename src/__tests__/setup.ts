@@ -98,6 +98,28 @@ vi.mock("@/lib/db", () => ({
       update: vi.fn(),
       deleteMany: vi.fn(),
     },
+    organization: {
+      findUnique: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      count: vi.fn(),
+    },
+    organizationMember: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      count: vi.fn(),
+    },
+    ratingOverrideLog: {
+      findMany: vi.fn(),
+      create: vi.fn(),
+      count: vi.fn(),
+    },
     $transaction: vi.fn(),
   },
 }))
