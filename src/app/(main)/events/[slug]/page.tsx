@@ -19,6 +19,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { EventCard } from "@/components/events/event-card"
+import { KnowledgePanel } from "@/components/events/knowledge-panel"
+import { PlacesOfInterest } from "@/components/events/places-of-interest"
+import { AccommodationFinder } from "@/components/events/accommodation-finder"
+import { DifficultyBadge } from "@/components/events/difficulty-badge"
 import { MOCK_EVENTS } from "@/lib/mock-data"
 
 export default function EventDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -85,6 +89,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ slug: st
               }`}>
                 {event.status}
               </Badge>
+              <DifficultyBadge difficulty="intermediate" />
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">{event.title}</h1>
             <div className="flex items-center gap-2 text-sm text-zinc-400">
@@ -166,6 +171,19 @@ export default function EventDetailPage({ params }: { params: Promise<{ slug: st
               All participants are required to follow safety guidelines. Ensure your emergency contacts are updated in your profile before joining.
             </p>
           </div>
+
+          {/* Places of Interest */}
+          <PlacesOfInterest
+            eventId={event.id}
+            destination={event.destination.address}
+          />
+
+          {/* Accommodations */}
+          <AccommodationFinder
+            eventId={event.id}
+            destination={event.destination.address}
+            startDate={event.startDate}
+          />
 
           {/* Participants */}
           <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-6">
@@ -259,6 +277,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ slug: st
                 Share Event
               </button>
             </div>
+
+            {/* Knowledge Base */}
+            <KnowledgePanel eventType={event.eventType.slug} />
 
             {/* Organizer Card */}
             <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-5">

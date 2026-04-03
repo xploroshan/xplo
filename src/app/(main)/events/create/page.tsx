@@ -6,12 +6,15 @@ import { ArrowLeft, Calendar, MapPin, Users, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { AiEnhanceButton } from "@/components/events/ai-enhance-button"
+import { AiSuggestionsPanel } from "@/components/events/ai-suggestions-panel"
 import Link from "next/link"
 import { DEFAULT_EVENT_TYPES } from "@/lib/constants"
 
 export default function CreateEventPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [aiSuggestions, setAiSuggestions] = useState<Array<{ key: string; label: string; value: string | string[] }> | null>(null)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -43,6 +46,7 @@ export default function CreateEventPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-300">Event Title</label>
               <Input
+                name="title"
                 placeholder="e.g. Weekend Ride to Goa"
                 required
                 className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus-visible:ring-orange-500"
@@ -65,13 +69,37 @@ export default function CreateEventPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300">Description</label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-zinc-300">Description</label>
+                <AiEnhanceButton
+                  onResult={(result) => {
+                    const suggestions = Object.entries(result)
+                      .filter(([, v]) => v !== undefined && v !== null)
+                      .map(([key, value]) => ({
+                        key,
+                        label: key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()),
+                        value: value as string | string[],
+                      }))
+                    setAiSuggestions(suggestions)
+                  }}
+                  formData={{}}
+                />
+              </div>
               <textarea
                 placeholder="Describe your event..."
                 rows={4}
                 className="w-full rounded-lg bg-zinc-800/50 border border-zinc-700 text-white placeholder:text-zinc-500 p-3 text-sm outline-none focus:ring-2 focus:ring-orange-500/50 transition-all resize-none"
               />
             </div>
+
+            {aiSuggestions && (
+              <AiSuggestionsPanel
+                suggestions={aiSuggestions}
+                onApply={() => {}}
+                onApplyAll={() => {}}
+                onDismiss={() => setAiSuggestions(null)}
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -112,6 +140,7 @@ export default function CreateEventPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-300">Starting Point</label>
               <Input
+                name="startLocation"
                 placeholder="Assembly point address"
                 className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus-visible:ring-orange-500"
               />
@@ -119,6 +148,7 @@ export default function CreateEventPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-300">Destination</label>
               <Input
+                name="destination"
                 placeholder="Destination address"
                 className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus-visible:ring-orange-500"
               />

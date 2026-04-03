@@ -1,5 +1,6 @@
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { AppTopBar } from "@/components/layout/app-top-bar"
+import { AiAssistant } from "@/components/ai/ai-assistant"
 
 export default function MainLayout({
   children,
@@ -13,6 +14,7 @@ export default function MainLayout({
         <AppTopBar />
         <main className="flex-1 pb-20 lg:pb-0">{children}</main>
       </div>
+      <AiAssistant />
     </div>
   )
 }
