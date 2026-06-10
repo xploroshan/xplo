@@ -6,29 +6,42 @@ import { Button } from "@/components/ui/button"
 
 interface ShareProfileButtonProps {
   slug: string
+  /** Organiser name, used in the native share sheet text. */
+  name?: string | null
 }
 
-export function ShareProfileButton({ slug }: ShareProfileButtonProps) {
+export function ShareProfileButton({ slug, name }: ShareProfileButtonProps) {
   const [copied, setCopied] = useState(false)
 
   async function handleShare() {
     const url = `${window.location.origin}/@${slug}`
+    const title = name ? `${name} on HYKRZ` : "Check out this organiser on HYKRZ"
+    const text = name
+      ? `Follow ${name}'s rides and join the next one 🏍️`
+      : "Discover and join group rides & treks 🏍️"
+
+    // Prefer the native share sheet on mobile (WhatsApp/Instagram/etc.).
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title, text, url })
+        return
+      } catch {
+        // User dismissed the sheet, or share failed — fall back to copy.
+      }
+    }
 
     try {
       await navigator.clipboard.writeText(url)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
     } catch {
-      // Fallback
       const textArea = document.createElement("textarea")
       textArea.value = url
       document.body.appendChild(textArea)
       textArea.select()
       document.execCommand("copy")
       document.body.removeChild(textArea)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
     }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -37,7 +50,7 @@ export function ShareProfileButton({ slug }: ShareProfileButtonProps) {
       size="icon"
       className="rounded-xl border-zinc-700 text-zinc-400 hover:text-white"
       onClick={handleShare}
-      title="Copy profile link"
+      title="Share profile"
     >
       {copied ? (
         <Check className="h-4 w-4 text-green-400" />

@@ -101,7 +101,7 @@ export function OrganizerHeader({
               initialPinned={isPinned}
               isAuthenticated={isAuthenticated}
             />
-            <ShareProfileButton slug={organizer.slug} />
+            <ShareProfileButton slug={organizer.slug} name={organizer.name} />
           </div>
         )}
       </div>

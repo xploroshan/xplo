@@ -140,10 +140,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       url: `${APP_URL}/@${organizer.slug}`,
       type: "profile",
-      images: organizer.image ? [{ url: organizer.image }] : [],
+      // og:image is supplied by the co-located opengraph-image.tsx (dynamic share card)
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title,
       description,
     },
