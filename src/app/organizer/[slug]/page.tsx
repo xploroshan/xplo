@@ -220,6 +220,7 @@ export default async function OrganizerProfilePage({ params, searchParams }: Pag
           socialLinks: organizer.socialLinks as Record<string, string> | null,
         }}
         stats={organizer.stats}
+        memberSince={organizer.createdAt ? new Date(organizer.createdAt).getFullYear() : null}
         isFollowing={isFollowing}
         isPinned={isPinned}
         isAuthenticated={!!session?.user}
