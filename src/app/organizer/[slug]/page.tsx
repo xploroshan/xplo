@@ -296,6 +296,9 @@ export default async function OrganizerProfilePage({ params, searchParams }: Pag
                   isRegistered={userRegistrations.includes(event.id)}
                   isAuthenticated={!!session?.user}
                   organizerSlug={organizer.slug!}
+                  organizerId={organizer.id}
+                  organizerName={organizer.name}
+                  isFollowing={isFollowing}
                 />
               ))}
         </div>

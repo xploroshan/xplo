@@ -5,12 +5,22 @@ import { useRouter } from "next/navigation"
 import { Check, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
+type RegStatus = "CONFIRMED" | "WAITLISTED" | "PENDING"
+
 interface EventRegisterButtonProps {
   eventId: string
   isRegistered: boolean
   isAuthenticated: boolean
   isFull: boolean
   organizerSlug: string
+  /** Fired after a successful join/cancel so the card can show the follow nudge. */
+  onRegisteredChange?: (registered: boolean) => void
+}
+
+const registeredLabel: Record<RegStatus, string> = {
+  CONFIRMED: "You're going",
+  WAITLISTED: "Waitlisted",
+  PENDING: "Pending approval",
 }
 
 export function EventRegisterButton({
@@ -19,9 +29,11 @@ export function EventRegisterButton({
   isAuthenticated,
   isFull,
   organizerSlug,
+  onRegisteredChange,
 }: EventRegisterButtonProps) {
   const router = useRouter()
   const [isRegistered, setIsRegistered] = useState(initialRegistered)
+  const [status, setStatus] = useState<RegStatus>("CONFIRMED")
   const [loading, setLoading] = useState(false)
 
   async function handleRegister() {
@@ -33,19 +45,19 @@ export function EventRegisterButton({
     setLoading(true)
     try {
       if (isRegistered) {
-        const res = await fetch(`/api/events/${eventId}/register`, {
-          method: "DELETE",
-        })
+        const res = await fetch(`/api/events/${eventId}/register`, { method: "DELETE" })
         if (res.ok) {
           setIsRegistered(false)
+          onRegisteredChange?.(false)
           router.refresh()
         }
       } else {
-        const res = await fetch(`/api/events/${eventId}/register`, {
-          method: "POST",
-        })
+        const res = await fetch(`/api/events/${eventId}/register`, { method: "POST" })
         if (res.ok) {
+          const data = (await res.json().catch(() => null)) as { status?: RegStatus } | null
+          setStatus(data?.status ?? "CONFIRMED")
           setIsRegistered(true)
+          onRegisteredChange?.(true)
           router.refresh()
         }
       }
@@ -69,8 +81,8 @@ export function EventRegisterButton({
         ) : (
           <Check className="h-4 w-4 mr-2" />
         )}
-        <span className="group-hover:hidden">Registered</span>
-        <span className="hidden group-hover:inline">Cancel Registration</span>
+        <span className="group-hover:hidden">{registeredLabel[status]}</span>
+        <span className="hidden group-hover:inline">Cancel registration</span>
       </Button>
     )
   }
@@ -80,12 +92,10 @@ export function EventRegisterButton({
       variant="glow"
       className="w-full rounded-xl"
       onClick={handleRegister}
-      disabled={loading || isFull}
+      disabled={loading}
     >
-      {loading ? (
-        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-      ) : null}
-      {isFull ? "Event Full — Join Waitlist" : "Register"}
+      {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+      {isFull ? "Join waitlist" : "Reserve my spot"}
     </Button>
   )
 }

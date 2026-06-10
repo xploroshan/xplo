@@ -1,8 +1,10 @@
 "use client"
 
-import { Calendar, MapPin, Users } from "lucide-react"
+import { useState } from "react"
+import { Calendar, MapPin, Users, Flame, Bell } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { EventRegisterButton } from "./event-register-button"
+import { FollowButton } from "./follow-button"
 
 interface EventCardProps {
   event: {
@@ -23,6 +25,9 @@ interface EventCardProps {
   isRegistered: boolean
   isAuthenticated: boolean
   organizerSlug: string
+  organizerId: string
+  organizerName: string | null
+  isFollowing: boolean
 }
 
 const statusColors: Record<string, string> = {
@@ -37,7 +42,14 @@ export function OrganizerEventCard({
   isRegistered,
   isAuthenticated,
   organizerSlug,
+  organizerId,
+  organizerName,
+  isFollowing,
 }: EventCardProps) {
+  // Show a one-time "follow for updates" nudge right after a fresh registration —
+  // the come-back hook that turns a one-off rider into a returning follower.
+  const [showFollowNudge, setShowFollowNudge] = useState(false)
+
   const date = new Date(event.startDate)
   const formattedDate = date.toLocaleDateString("en-IN", {
     weekday: "short",
@@ -50,8 +62,7 @@ export function OrganizerEventCard({
     minute: "2-digit",
   })
 
-  const destinationAddress =
-    event.destination?.address || "Location TBD"
+  const destinationAddress = event.destination?.address || "Location TBD"
 
   const capacityPercent =
     event.capacity && event.capacity > 0
@@ -59,10 +70,23 @@ export function OrganizerEventCard({
       : 0
 
   const isFull = event.capacity ? event.registeredCount >= event.capacity : false
+  const spotsLeft = event.capacity ? Math.max(event.capacity - event.registeredCount, 0) : null
+  // "Scarce" = within the last few spots (min 3, or 15% of capacity).
+  const scarce =
+    spotsLeft != null &&
+    spotsLeft > 0 &&
+    event.capacity != null &&
+    spotsLeft <= Math.max(3, Math.ceil(event.capacity * 0.15))
+
   const priceDisplay =
     event.price && Number(event.price) > 0
       ? `${event.currency} ${Number(event.price).toLocaleString()}`
       : "Free"
+
+  function handleRegisteredChange(registered: boolean) {
+    // Only nudge people who aren't already following and just opted in.
+    setShowFollowNudge(registered && !isFollowing && isAuthenticated)
+  }
 
   return (
     <div
@@ -103,36 +127,60 @@ export function OrganizerEventCard({
         </div>
       </div>
 
-      {/* Capacity Bar */}
-      {event.capacity && (
-        <div className="mb-4">
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="text-zinc-400 flex items-center gap-1">
-              <Users className="h-3 w-3" />
-              {event.registeredCount} / {event.capacity} registered
+      {/* Social proof + scarcity */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between text-xs mb-1">
+          <span className="text-zinc-400 flex items-center gap-1">
+            <Users className="h-3 w-3" />
+            {event.registeredCount > 0 ? `${event.registeredCount} going` : "Be the first to join"}
+            {event.capacity ? ` · ${event.capacity} spots` : ""}
+          </span>
+          {isFull ? (
+            <span className="text-red-400 font-medium">Full</span>
+          ) : scarce ? (
+            <span className="text-amber-400 font-medium flex items-center gap-1">
+              <Flame className="h-3 w-3" />
+              Only {spotsLeft} left
             </span>
-            {isFull && <span className="text-red-400 font-medium">Full</span>}
-          </div>
+          ) : null}
+        </div>
+        {event.capacity && (
           <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all"
               style={{
                 width: `${capacityPercent}%`,
-                backgroundColor: isFull ? "#ef4444" : event.eventType.color,
+                backgroundColor: isFull ? "#ef4444" : scarce ? "#f59e0b" : event.eventType.color,
               }}
             />
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Register Button */}
+      {/* Register */}
       <EventRegisterButton
         eventId={event.id}
         isRegistered={isRegistered}
         isAuthenticated={isAuthenticated}
         isFull={isFull}
         organizerSlug={organizerSlug}
+        onRegisteredChange={handleRegisteredChange}
       />
+
+      {/* Come-back hook: nudge a fresh registrant to follow for updates */}
+      {showFollowNudge && (
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-orange-500/20 bg-orange-500/5 px-3 py-2">
+          <span className="text-xs text-zinc-300 flex items-center gap-1.5">
+            <Bell className="h-3.5 w-3.5 text-orange-400 shrink-0" />
+            Get updates on {organizerName ? `${organizerName}'s` : "the"} next ride
+          </span>
+          <FollowButton
+            organizerId={organizerId}
+            initialFollowing={false}
+            isAuthenticated={isAuthenticated}
+          />
+        </div>
+      )}
     </div>
   )
 }
