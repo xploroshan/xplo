@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { track } from "@/lib/analytics"
 
 export async function POST(
   _request: Request,
@@ -67,6 +68,13 @@ export async function POST(
             status,
           },
         })
+
+    await track("event_registered", {
+      userId: session.user.id,
+      eventId,
+      organizerId: event.organizerId,
+      props: { status },
+    })
 
     return NextResponse.json({ participant, status }, { status: 201 })
   } catch (error) {

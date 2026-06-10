@@ -560,3 +560,25 @@ model RatingOverrideLog {
   @@index([targetType, targetId])
   @@index([adminId])
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 17: AnalyticsEvent
+// Purpose: Owned, append-only product analytics for validating the wedge loop
+//          (publish -> view -> register -> follow -> share). No FKs by design —
+//          it's an event log. The same shape can later forward to PostHog.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+  name        String   // "event_published" | "event_viewed" | "event_registered" | ...
+  userId      String?  // actor, if known
+  eventId     String?
+  organizerId String?
+  props       Json?
+  createdAt   DateTime @default(now())
+
+  @@index([name, createdAt])
+  @@index([eventId])
+  @@index([organizerId])
+  @@index([createdAt])
+}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { followOrganizerSchema } from "@/lib/validations/organizer"
+import { track } from "@/lib/analytics"
 
 export async function POST(request: Request) {
   try {
@@ -61,6 +62,11 @@ export async function POST(request: Request) {
         senderId: session.user.id,
         link: `/profile`,
       },
+    })
+
+    await track("organizer_followed", {
+      userId: session.user.id,
+      organizerId,
     })
 
     return NextResponse.json({ follow }, { status: 201 })

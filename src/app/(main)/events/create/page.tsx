@@ -21,6 +21,7 @@ import { AiSuggestionsPanel } from "@/components/events/ai-suggestions-panel"
 import { OrgSelector } from "@/components/organizations/org-selector"
 import Link from "next/link"
 import { DEFAULT_EVENT_TYPES } from "@/lib/constants"
+import { track } from "@/lib/analytics-client"
 
 interface UserOrg {
   id: string
@@ -322,6 +323,7 @@ function PublishedSuccess({ published }: { published: Published }) {
     } catch {
       /* ignore */
     }
+    track("link_copied", { props: { context: `publish_${which}`, slug: published.eventSlug } })
     setCopied(which)
     setTimeout(() => setCopied(null), 2000)
   }
@@ -334,6 +336,7 @@ function PublishedSuccess({ published }: { published: Published }) {
           text: `Join my ride: ${published.title} 🏍️`,
           url: eventUrl,
         })
+        track("share_clicked", { props: { context: "publish", slug: published.eventSlug } })
         return
       } catch {
         /* fall through */

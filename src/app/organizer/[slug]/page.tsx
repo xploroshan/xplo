@@ -7,6 +7,7 @@ import { APP_NAME, APP_URL } from "@/lib/constants"
 import Link from "next/link"
 import { OrganizerHeader } from "@/components/organizer/organizer-header"
 import { OrganizerEventCard } from "@/components/organizer/organizer-event-card"
+import { TrackView } from "@/components/analytics/track-view"
 import { OrganizerPastEventCard } from "@/components/organizer/organizer-past-event-card"
 
 interface PageProps {
@@ -208,6 +209,7 @@ export default async function OrganizerProfilePage({ params, searchParams }: Pag
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <TrackView name="organizer_viewed" organizerId={organizer.id} />
       <OrganizerHeader
         organizer={{
           id: organizer.id,

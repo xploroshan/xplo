@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Share2, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { track } from "@/lib/analytics-client"
 
 interface ShareProfileButtonProps {
   slug: string
@@ -24,6 +25,7 @@ export function ShareProfileButton({ slug, name }: ShareProfileButtonProps) {
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({ title, text, url })
+        track("share_clicked", { props: { context: "organizer_profile", slug } })
         return
       } catch {
         // User dismissed the sheet, or share failed — fall back to copy.
@@ -40,6 +42,7 @@ export function ShareProfileButton({ slug, name }: ShareProfileButtonProps) {
       document.execCommand("copy")
       document.body.removeChild(textArea)
     }
+    track("link_copied", { props: { context: "organizer_profile", slug } })
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }

@@ -4,6 +4,7 @@ import { nanoid } from "nanoid"
 import { z } from "zod/v4"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { track } from "@/lib/analytics"
 
 // Body sent by the create-event form. Event type comes through as a slug
 // (the radio value), resolved to an id here.
@@ -107,10 +108,18 @@ export async function POST(request: Request) {
         // Publish straight to OPEN so it's immediately shareable and joinable.
         status: "OPEN",
       },
-      select: { slug: true },
+      select: { id: true, slug: true },
     })
 
-    return NextResponse.json({ event, organizerSlug }, { status: 201 })
+    // Activation: first/next publish. handleClaimed flags the supply-side moment.
+    await track("event_published", {
+      userId: session.user.id,
+      eventId: event.id,
+      organizerId: session.user.id,
+      props: { handleClaimed: !me.slug },
+    })
+
+    return NextResponse.json({ event: { slug: event.slug }, organizerSlug }, { status: 201 })
   } catch (error) {
     console.error("Event create error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

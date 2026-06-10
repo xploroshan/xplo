@@ -17,6 +17,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { EventRegisterButton } from "@/components/organizer/event-register-button"
+import { TrackView } from "@/components/analytics/track-view"
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -134,6 +135,7 @@ export default async function EventDetailPage({ params }: PageProps) {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+      <TrackView name="event_viewed" eventId={event.id} />
       <Link
         href="/events"
         className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors mb-6"
