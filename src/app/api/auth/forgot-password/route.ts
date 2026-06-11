@@ -3,12 +3,13 @@ import crypto from "crypto"
 import { db } from "@/lib/db"
 import { forgotPasswordSchema } from "@/lib/validations/auth"
 import { rateLimit, getClientIp } from "@/lib/rate-limit"
+import { sendEmail, passwordResetEmail, appUrl } from "@/lib/email"
 
 export async function POST(request: Request) {
   try {
     // Rate limit: 3 requests per 15 minutes per IP
     const ip = getClientIp(request)
-    const { success } = rateLimit(`forgot-pwd:${ip}`, 3, 15 * 60 * 1000)
+    const { success } = await rateLimit(`forgot-pwd:${ip}`, 3, 15 * 60 * 1000)
     if (!success) {
       return NextResponse.json(
         { error: "Too many requests. Please try again later." },
@@ -45,10 +46,11 @@ export async function POST(request: Request) {
         data: { token, email, expiresAt },
       })
 
-      // In development: log the reset URL to console
-      // In production: send email with reset link
-      const resetUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/reset-password?token=${token}`
-      console.log(`[Password Reset] Token for ${email}: ${resetUrl}`)
+      // Email the reset link. sendEmail no-ops (with a warning) if RESEND_API_KEY
+      // isn't configured yet, so this never blocks the response.
+      const resetUrl = `${appUrl()}/reset-password?token=${token}`
+      const { subject, html, text } = passwordResetEmail(resetUrl)
+      await sendEmail({ to: email, subject, html, text })
     }
 
     return NextResponse.json({

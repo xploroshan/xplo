@@ -22,7 +22,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { success, remaining } = rateLimit(
+    const { success, remaining } = await rateLimit(
       `ai-recommendations:${session.user.id}`,
       10,
       60 * 1000
