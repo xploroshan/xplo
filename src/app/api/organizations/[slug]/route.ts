@@ -49,9 +49,13 @@ export async function GET(
       _count: true,
     })
 
-    // Recent events (last 6)
+    // Recent events (last 6). Public endpoint — exclude DRAFT/ARCHIVED so an
+    // org's unpublished events don't leak on its profile.
     const recentEvents = await db.event.findMany({
-      where: { organizationId: org.id },
+      where: {
+        organizationId: org.id,
+        status: { in: ["PUBLISHED", "OPEN", "CLOSED", "ACTIVE", "COMPLETED"] },
+      },
       orderBy: { startDate: "desc" },
       take: 6,
       select: {

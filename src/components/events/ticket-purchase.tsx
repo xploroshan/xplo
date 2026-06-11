@@ -70,6 +70,8 @@ export function TicketPurchase({
       router.push(`/login?callbackUrl=/events`)
       return
     }
+    // Guard re-entry: don't let a second checkout start while one is open.
+    if (busyId) return
     setBusyId(tt.id)
     setError(null)
     try {
@@ -114,6 +116,7 @@ export function TicketPurchase({
             router.refresh()
           } else {
             setError("Payment couldn't be confirmed. If you were charged, contact the organizer.")
+            setBusyId(null)
           }
         },
         modal: { ondismiss: () => setBusyId(null) },
@@ -121,9 +124,11 @@ export function TicketPurchase({
       rzp.open()
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong")
-    } finally {
       setBusyId(null)
     }
+    // On the paid path we intentionally keep busyId set while the Razorpay modal
+    // is open — it's cleared by the modal's ondismiss / verify handlers, so the
+    // Buy buttons can't be clicked again to start a duplicate order.
   }
 
   if (done) {

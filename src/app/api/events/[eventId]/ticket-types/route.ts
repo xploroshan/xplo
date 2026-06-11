@@ -12,11 +12,31 @@ async function assertOrganizer(eventId: string, userId: string, role?: string) {
   return { event }
 }
 
+const PUBLIC_EVENT_STATUSES = ["PUBLISHED", "OPEN", "CLOSED", "ACTIVE", "COMPLETED"]
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ eventId: string }> }
 ) {
   const { eventId } = await params
+
+  // Don't expose pricing for DRAFT/ARCHIVED events to the public — only the
+  // organizer (or an admin) may view ticket types before an event is published.
+  const event = await db.event.findUnique({
+    where: { id: eventId },
+    select: { status: true, organizerId: true },
+  })
+  if (!event) {
+    return NextResponse.json({ error: "Event not found" }, { status: 404 })
+  }
+  if (!PUBLIC_EVENT_STATUSES.includes(event.status)) {
+    const session = await auth()
+    const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN"
+    if (!session?.user?.id || (event.organizerId !== session.user.id && !isAdmin)) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 })
+    }
+  }
+
   const types = await db.ticketType.findMany({
     where: { eventId, isActive: true },
     orderBy: { sortOrder: "asc" },

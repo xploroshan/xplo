@@ -23,6 +23,10 @@ export async function GET(
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "12")))
     const skip = (page - 1) * limit
 
+    // This is a public, unauthenticated endpoint — never expose DRAFT/ARCHIVED
+    // events. Default to the full set of publicly-visible statuses.
+    const PUBLIC_STATUSES = ["PUBLISHED", "OPEN", "CLOSED", "ACTIVE", "COMPLETED"]
+
     const now = new Date()
     const where: Record<string, unknown> = {
       organizationId: org.id,
@@ -32,10 +36,13 @@ export async function GET(
       where.startDate = { gte: now }
       where.status = { in: ["PUBLISHED", "OPEN", "ACTIVE"] }
     } else if (status === "past") {
+      where.status = { in: PUBLIC_STATUSES }
       where.OR = [
         { endDate: { lt: now } },
         { startDate: { lt: now }, endDate: null, status: "COMPLETED" },
       ]
+    } else {
+      where.status = { in: PUBLIC_STATUSES }
     }
 
     const [events, total] = await Promise.all([
