@@ -25,6 +25,13 @@ async function main() {
   }
   console.log(`Event types: ${typeBySlug.size}`)
 
+  // Demo data (mock organisers + events) is dev-only. In production we seed just
+  // the essentials above; set SEED_DEMO=true to populate sample content.
+  if (process.env.SEED_DEMO !== "true") {
+    console.log("Skipping demo data (set SEED_DEMO=true to include it).")
+    return
+  }
+
   // Organisers (from MOCK_ORGANIZERS)
   const orgBySlug = new Map<string, string>()
   for (const o of MOCK_ORGANIZERS) {
