@@ -19,8 +19,10 @@ export function isAIAvailable(): boolean {
   return !!process.env.ANTHROPIC_API_KEY
 }
 
-// Standard model for all AI features
-export const AI_MODEL = "claude-sonnet-4-20250514"
+// Standard model for all AI features. claude-sonnet-4-6 — the speed/intelligence
+// balance for a cost-sensitive consumer app (successor to the deprecated
+// claude-sonnet-4-20250514, which retires 2026-06-15).
+export const AI_MODEL = "claude-sonnet-4-6"
 
 // Build system prompt for the Trip Advisor chat
 export function buildTripAdvisorPrompt(context: {
