@@ -90,6 +90,19 @@ vi.mock("@/lib/db", () => ({
       groupBy: vi.fn(),
       deleteMany: vi.fn(),
     },
+    ticketType: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      count: vi.fn(),
+    },
+    order: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+    },
     conversation: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -102,6 +115,7 @@ vi.mock("@/lib/db", () => ({
       findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      upsert: vi.fn(),
       aggregate: vi.fn(),
     },
     organizerPin: {

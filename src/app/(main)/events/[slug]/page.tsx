@@ -22,6 +22,7 @@ import { EventMap } from "@/components/events/event-map"
 import { EventActions } from "@/components/events/event-actions"
 import { RateEventForm } from "@/components/events/rate-event-form"
 import { RemindButton } from "@/components/events/remind-button"
+import { TicketPurchase } from "@/components/events/ticket-purchase"
 import { googleCalendarUrl } from "@/lib/ics"
 import { Star, QrCode, ListChecks, Flag, MessageCircle, Radio, Route as RouteIcon } from "lucide-react"
 
@@ -118,6 +119,21 @@ export default async function EventDetailPage({ params }: PageProps) {
     isRegistered = !!p && p.status !== "CANCELLED"
     myParticipation = p
   }
+
+  // Paid ticket tiers (active). When present, they replace the free RSVP button.
+  const ticketTypes = await db.ticketType.findMany({
+    where: { eventId: event.id, isActive: true },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true, name: true, description: true, price: true, quantity: true, sold: true },
+  })
+  const tiers = ticketTypes.map((t) => ({
+    id: t.id,
+    name: t.name,
+    description: t.description,
+    price: Number(t.price),
+    soldOut: t.quantity != null && t.sold >= t.quantity,
+  }))
+  const hasTickets = tiers.length > 0
 
   // "Remind me" state (only relevant when the event isn't open yet).
   let isReminding = false
@@ -490,13 +506,22 @@ export default async function EventDetailPage({ params }: PageProps) {
                 </Link>
               ) : REGISTERABLE.includes(event.status) ? (
                 <div className="space-y-2">
-                  <EventRegisterButton
-                    eventId={event.id}
-                    isRegistered={isRegistered}
-                    isAuthenticated={!!session?.user}
-                    isFull={isFull}
-                    organizerSlug={event.organizer.slug || ""}
-                  />
+                  {hasTickets && !isConfirmed ? (
+                    <TicketPurchase
+                      eventId={event.id}
+                      ticketTypes={tiers}
+                      isAuthenticated={!!session?.user}
+                      buyer={{ name: session?.user?.name, email: session?.user?.email }}
+                    />
+                  ) : (
+                    <EventRegisterButton
+                      eventId={event.id}
+                      isRegistered={isRegistered}
+                      isAuthenticated={!!session?.user}
+                      isFull={isFull}
+                      organizerSlug={event.organizer.slug || ""}
+                    />
+                  )}
                   {myParticipation?.status === "CONFIRMED" && (
                     <Link href={`/events/${event.slug}/pass`}>
                       <Button variant="outline" className="w-full rounded-xl border-zinc-700 gap-2">

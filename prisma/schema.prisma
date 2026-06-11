@@ -71,6 +71,7 @@ model User {
   conversationsA    Conversation[]    @relation("ConvA")
   conversationsB    Conversation[]    @relation("ConvB")
   locationPings     LocationPing[]
+  orders            Order[]
 
   @@index([email])
   @@index([city])
@@ -217,6 +218,8 @@ model Event {
   posts        Post[]
   reminders    EventReminder[]
   locationPings LocationPing[]
+  ticketTypes  TicketType[]
+  orders       Order[]
 
   @@index([status, startDate])
   @@index([eventTypeId])
@@ -555,6 +558,62 @@ model LocationPing {
 
   @@index([eventId, userId, recordedAt])
   @@index([recordedAt])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 12g: TicketType + Order
+// Purpose: Paid ticketing (SRS monetization). A paid Order, once captured,
+//          confirms an EventParticipant — so paid attendees flow into the
+//          roster, chat, pass, and tracking exactly like free RSVPs.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model TicketType {
+  id          String   @id @default(cuid())
+  eventId     String
+  name        String
+  description String?
+  price       Decimal  @db.Decimal(10, 2) // INR; 0 = free tier
+  currency    String   @default("INR")
+  quantity    Int?     // null = unlimited
+  sold        Int      @default(0)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  event  Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@index([eventId])
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model Order {
+  id                String      @id @default(cuid())
+  eventId           String
+  ticketTypeId      String?
+  userId            String
+  quantity          Int         @default(1)
+  amount            Decimal     @db.Decimal(10, 2) // total charged
+  platformFee       Decimal     @db.Decimal(10, 2) @default(0)
+  currency          String      @default("INR")
+  status            OrderStatus @default(PENDING)
+  razorpayOrderId   String?     @unique
+  razorpayPaymentId String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  event      Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  ticketType TicketType? @relation(fields: [ticketTypeId], references: [id])
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([eventId])
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, type ReactNode } from "react"
-import { Users, Pencil, Megaphone, Check, X, ArrowUp, Loader2 } from "lucide-react"
+import { useState, useEffect, type ReactNode } from "react"
+import { Users, Pencil, Megaphone, Check, X, ArrowUp, Loader2, Ticket, Trash2 } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -58,7 +58,7 @@ export function ManageDashboard({
   event: EventData
   initialParticipants: Participant[]
 }) {
-  const [tab, setTab] = useState<"roster" | "edit" | "broadcast">("roster")
+  const [tab, setTab] = useState<"roster" | "tickets" | "edit" | "broadcast">("roster")
   const [participants, setParticipants] = useState(initialParticipants)
 
   const pending = participants.filter((p) => p.status === "PENDING")
@@ -97,6 +97,7 @@ export function ManageDashboard({
 
   const tabs = [
     { key: "roster" as const, label: "Roster", icon: Users },
+    { key: "tickets" as const, label: "Tickets", icon: Ticket },
     { key: "edit" as const, label: "Edit", icon: Pencil },
     { key: "broadcast" as const, label: "Broadcast", icon: Megaphone },
   ]
@@ -143,6 +144,7 @@ export function ManageDashboard({
         />
       )}
       {tab === "edit" && <EditTab event={event} />}
+      {tab === "tickets" && <TicketsTab eventId={event.id} />}
       {tab === "broadcast" && <BroadcastTab eventId={event.id} recipientCount={confirmed.length} />}
     </div>
   )
@@ -473,6 +475,125 @@ function EditTab({ event }: { event: EventData }) {
           Save changes
         </Button>
         {saved && <span className="text-sm text-green-400">Saved ✓</span>}
+      </div>
+    </div>
+  )
+}
+
+interface TicketTier {
+  id: string
+  name: string
+  description: string | null
+  price: number
+  quantity: number | null
+  sold: number
+}
+
+function TicketsTab({ eventId }: { eventId: string }) {
+  const [tiers, setTiers] = useState<TicketTier[]>([])
+  const [loading, setLoading] = useState(true)
+  const [form, setForm] = useState({ name: "", description: "", price: "", quantity: "" })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch(`/api/events/${eventId}/ticket-types`)
+      .then((r) => (r.ok ? r.json() : { ticketTypes: [] }))
+      .then((d) => setTiers(d.ticketTypes))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [eventId])
+
+  async function add() {
+    setSaving(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/events/${eventId}/ticket-types`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          description: form.description || undefined,
+          price: Number(form.price) || 0,
+          quantity: form.quantity ? Number(form.quantity) : null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Could not add")
+      setTiers((prev) => [
+        ...prev,
+        { id: data.id, name: form.name, description: form.description || null, price: Number(form.price) || 0, quantity: form.quantity ? Number(form.quantity) : null, sold: 0 },
+      ])
+      setForm({ name: "", description: "", price: "", quantity: "" })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not add")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function remove(id: string) {
+    await fetch(`/api/events/${eventId}/ticket-types/${id}`, { method: "DELETE" })
+    setTiers((prev) => prev.filter((t) => t.id !== id))
+  }
+
+  const label = "block text-xs font-medium text-zinc-400 mb-1.5"
+
+  return (
+    <div className="max-w-xl space-y-5">
+      <p className="text-sm text-zinc-400">
+        Add paid (or free) ticket tiers. Buyers check out securely; a paid ticket confirms them on the roster automatically — they get the pass, chat, and tracking like everyone else.
+      </p>
+
+      {loading ? (
+        <Loader2 className="h-5 w-5 animate-spin text-zinc-600" />
+      ) : tiers.length > 0 ? (
+        <div className="space-y-2">
+          {tiers.map((t) => (
+            <div key={t.id} className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900/50 p-3">
+              <Ticket className="h-4 w-4 text-orange-500 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-white">{t.name}</p>
+                <p className="text-xs text-zinc-500">
+                  {t.price > 0 ? `₹${t.price.toLocaleString("en-IN")}` : "Free"}
+                  {t.quantity != null ? ` · ${t.sold}/${t.quantity} sold` : ` · ${t.sold} sold`}
+                </p>
+              </div>
+              <button onClick={() => remove(t.id)} className="text-zinc-600 hover:text-red-400 p-1" title="Remove tier">
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-zinc-500">No ticket tiers yet — add one below (or leave empty for free RSVP).</p>
+      )}
+
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3">
+        <h3 className="text-sm font-semibold text-white">New tier</h3>
+        <div>
+          <label className={label}>Name</label>
+          <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Early Bird" />
+        </div>
+        <div>
+          <label className={label}>Description (optional)</label>
+          <Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What's included" />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={label}>Price (₹)</label>
+            <Input type="number" min={0} value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="0 for free" />
+          </div>
+          <div>
+            <label className={label}>Quantity (blank = unlimited)</label>
+            <Input type="number" min={1} value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} placeholder="e.g. 50" />
+          </div>
+        </div>
+        {error && <p className="text-sm text-red-400">{error}</p>}
+        <Button variant="glow" onClick={add} disabled={saving || !form.name.trim()} className="gap-2">
+          {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+          Add tier
+        </Button>
       </div>
     </div>
   )
