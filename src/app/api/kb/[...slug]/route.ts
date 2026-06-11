@@ -61,6 +61,12 @@ export async function GET(
     return NextResponse.json({ results })
   }
 
+  // Containment: KB paths are simple slug segments. Reject anything that could
+  // traverse the filesystem (".." , separators, encoded paths, null bytes).
+  if (!slug.every((s) => /^[a-zA-Z0-9_-]+$/.test(s))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+
   // Handle listing: /api/kb/[category]
   if (slug.length === 1) {
     const categoryDir = path.join(KB_DIR, slug[0])
@@ -78,7 +84,11 @@ export async function GET(
   }
 
   // Handle article: /api/kb/[category]/[article]
-  const filePath = path.join(KB_DIR, ...slug) + ".md"
+  const filePath = path.resolve(KB_DIR, ...slug) + ".md"
+  // Defense in depth: the resolved path must stay inside KB_DIR.
+  if (!filePath.startsWith(KB_DIR + path.sep)) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
   try {
     const content = fs.readFileSync(filePath, "utf-8")
     const title = content.split("\n")[0]?.replace(/^#+\s*/, "") || slug[slug.length - 1]

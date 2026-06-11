@@ -3,6 +3,7 @@ import { z } from "zod/v4"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { verifyTotp } from "@/lib/totp"
+import { rateLimit } from "@/lib/rate-limit"
 
 const body = z.object({ code: z.string().min(6).max(8) })
 
@@ -12,6 +13,13 @@ export async function POST(request: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+
+  // Throttle code verification so the 6-digit TOTP can't be brute-forced.
+  const { success } = await rateLimit(`2fa-enable:${session.user.id}`, 5, 15 * 60 * 1000)
+  if (!success) {
+    return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 })
+  }
+
   const parsed = body.safeParse(await request.json().catch(() => null))
   if (!parsed.success) {
     return NextResponse.json({ error: "A 6-digit code is required" }, { status: 400 })

@@ -3,6 +3,7 @@ import QRCode from "qrcode"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { generateTotpSecret, totpAuthUri } from "@/lib/totp"
+import { rateLimit } from "@/lib/rate-limit"
 
 // Begin 2FA enrollment: generate + store a secret (not yet enabled) and return
 // the QR + secret for the user's authenticator app.
@@ -10,6 +11,12 @@ export async function POST() {
   const session = await auth()
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  // Throttle secret regeneration to curb churn/abuse of the QR endpoint.
+  const { success } = await rateLimit(`2fa-setup:${session.user.id}`, 5, 15 * 60 * 1000)
+  if (!success) {
+    return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 })
   }
 
   const user = await db.user.findUnique({

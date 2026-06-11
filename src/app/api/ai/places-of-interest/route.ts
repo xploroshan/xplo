@@ -57,7 +57,7 @@ export async function GET(request: Request) {
         )
       }
 
-      // Check cache first
+      // Check cache first (cached reads are open to any authenticated user).
       try {
         const eventData = event as Record<string, unknown>
         if (eventData.nearbyPoi) {
@@ -65,6 +65,13 @@ export async function GET(request: Request) {
         }
       } catch {
         // Field may not exist yet
+      }
+
+      // Only the organizer (or an admin) may trigger generation + the cache
+      // write — prevents cross-tenant cache poisoning and LLM-budget abuse.
+      const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN"
+      if (event.organizerId !== session.user.id && !isAdmin) {
+        return NextResponse.json({ error: "Only the organizer can generate this" }, { status: 403 })
       }
 
       const dest = event.destination as { address?: string } | null

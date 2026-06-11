@@ -66,6 +66,14 @@ export async function POST(request: Request) {
           { status: 404 }
         )
       }
+
+      // Only the organizer (or an admin) may run an assessment + cache write —
+      // it mutates the event (aiAssessment/difficulty) and spends LLM budget.
+      const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN"
+      if (event.organizerId !== session.user.id && !isAdmin) {
+        return NextResponse.json({ error: "Only the organizer can generate this" }, { status: 403 })
+      }
+
       const startLoc = event.startLocation as { address?: string } | null
       const dest = event.destination as { address?: string } | null
       assessmentInput = {

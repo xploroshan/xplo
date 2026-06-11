@@ -10,6 +10,7 @@ import { PopularOrganizers } from "@/components/events/popular-organizers"
 import { EventsMapView, type MapEvent } from "@/components/events/events-map-view"
 import { EventCalendar, type CalendarEvent } from "@/components/events/event-calendar"
 import { CityAutoDetect } from "@/components/events/city-auto-detect"
+import { safeJsonLd } from "@/lib/json-ld"
 import { RecommendedEvents } from "@/components/events/recommended-events"
 import type { MockEvent, MockOrganizer } from "@/lib/mock-data"
 
@@ -275,7 +276,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }} />
 
       {/* Hero */}
       <div className="text-center space-y-2 pt-2 pb-1">
