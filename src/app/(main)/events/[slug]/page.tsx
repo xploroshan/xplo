@@ -23,7 +23,7 @@ import { EventActions } from "@/components/events/event-actions"
 import { RateEventForm } from "@/components/events/rate-event-form"
 import { RemindButton } from "@/components/events/remind-button"
 import { googleCalendarUrl } from "@/lib/ics"
-import { Star, QrCode, ListChecks, Flag } from "lucide-react"
+import { Star, QrCode, ListChecks, Flag, MessageCircle } from "lucide-react"
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -488,6 +488,15 @@ export default async function EventDetailPage({ params }: PageProps) {
                 <Button disabled className="w-full rounded-xl">
                   Registration closed
                 </Button>
+              )}
+
+              {(isConfirmed || isOrganizer) && (
+                <Link href={`/events/${event.slug}/chat`} className="block mt-2">
+                  <Button variant="outline" className="w-full rounded-xl border-zinc-700 gap-2">
+                    <MessageCircle className="h-4 w-4" />
+                    Group chat
+                  </Button>
+                </Link>
               )}
             </div>
 
