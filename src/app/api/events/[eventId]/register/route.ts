@@ -52,7 +52,6 @@ export async function POST(
         description: true,
         startLocation: true,
         destination: true,
-        _count: { select: { participants: { where: { status: "CONFIRMED" } } } },
       },
     })
 
@@ -77,22 +76,34 @@ export async function POST(
       return NextResponse.json({ error: "Already registered for this event" }, { status: 409 })
     }
 
-    // Determine status
-    let status: "PENDING" | "CONFIRMED" | "WAITLISTED" = "CONFIRMED"
-    if (event.requiresApproval) {
-      status = "PENDING"
-    } else if (event.capacity && event._count.participants >= event.capacity) {
-      status = "WAITLISTED"
-    }
+    // Decide status and write the participant under an event-row lock, counting
+    // confirmed seats *inside* the lock. The previous version read a stale
+    // _count outside any transaction, so two simultaneous RSVPs could both see
+    // a free seat and both confirm — overflowing capacity. Serializing on the
+    // event row closes that race.
+    const { participant, status } = await db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT 1 FROM "Event" WHERE "id" = ${eventId} FOR UPDATE`
 
-    const participant = existing
-      ? await db.eventParticipant.update({
-          where: { id: existing.id },
-          data: { status, joinedAt: new Date() },
+      let status: "PENDING" | "CONFIRMED" | "WAITLISTED" = "CONFIRMED"
+      if (event.requiresApproval) {
+        status = "PENDING"
+      } else if (event.capacity) {
+        const confirmed = await tx.eventParticipant.count({
+          where: { eventId, status: "CONFIRMED" },
         })
-      : await db.eventParticipant.create({
-          data: { userId: session.user.id, eventId, status },
-        })
+        if (confirmed >= event.capacity) status = "WAITLISTED"
+      }
+
+      const participant = existing
+        ? await tx.eventParticipant.update({
+            where: { id: existing.id },
+            data: { status, joinedAt: new Date() },
+          })
+        : await tx.eventParticipant.create({
+            data: { userId: session.user.id, eventId, status },
+          })
+      return { participant, status }
+    })
 
     await track("event_registered", {
       userId: session.user.id,

@@ -63,6 +63,8 @@ export function EventChat({
   const [canModerate, setCanModerate] = useState(false)
   const [chatActive, setChatActive] = useState(true)
   const [loading, setLoading] = useState(true)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingOlder, setLoadingOlder] = useState(false)
   const [input, setInput] = useState("")
   const [replyTo, setReplyTo] = useState<Msg | null>(null)
   const [sending, setSending] = useState(false)
@@ -96,6 +98,8 @@ export function EventChat({
     setCanModerate(data.canModerate)
     setChatActive(data.chatActive)
     setPinned(data.pinned)
+    // Only the initial (non-cursor) load reports whether older history exists.
+    if (!lastAtRef.current) setHasMore(!!data.hasMore)
 
     if (data.messages.length > 0) {
       setMessages((prev) => {
@@ -118,6 +122,40 @@ export function EventChat({
       markRead()
     }
   }, [eventId, scrollToBottom, markRead])
+
+  // Load a page of older history, prepending it while holding scroll position
+  // (so the viewport doesn't jump when content is inserted above).
+  const loadOlder = useCallback(async () => {
+    const oldest = messages[0]
+    if (!oldest || loadingOlder) return
+    setLoadingOlder(true)
+    const el = scrollRef.current
+    const prevHeight = el?.scrollHeight ?? 0
+    try {
+      const res = await fetch(
+        `/api/events/${eventId}/messages?before=${encodeURIComponent(oldest.createdAt)}`
+      )
+      if (!res.ok) return
+      const data = await res.json()
+      setHasMore(!!data.hasMore)
+      if (data.messages.length > 0) {
+        setMessages((prev) => {
+          const byId = new Map<string, Msg>((data.messages as Msg[]).map((m) => [m.id, m]))
+          for (const m of prev) byId.set(m.id, m)
+          return Array.from(byId.values()).sort(
+            (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          )
+        })
+        // Restore the scroll offset after the taller content renders.
+        requestAnimationFrame(() => {
+          const e2 = scrollRef.current
+          if (e2) e2.scrollTop += e2.scrollHeight - prevHeight
+        })
+      }
+    } finally {
+      setLoadingOlder(false)
+    }
+  }, [eventId, messages, loadingOlder])
 
   // Realtime: instant pokes + typing + presence (falls back to polling alone).
   const { onlineCount, typingNames, sendTyping } = useRealtime({
@@ -305,6 +343,18 @@ export function EventChat({
           }}
           className="flex-1 overflow-y-auto px-4 py-4 space-y-3"
         >
+          {!loading && hasMore && messages.length > 0 && (
+            <div className="flex justify-center pb-1">
+              <button
+                onClick={loadOlder}
+                disabled={loadingOlder}
+                className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-900/60 px-3 py-1 text-xs text-zinc-400 hover:text-white hover:border-zinc-700 transition-colors disabled:opacity-50"
+              >
+                {loadingOlder ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                Load older messages
+              </button>
+            </div>
+          )}
           {loading ? (
             <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-zinc-600" /></div>
           ) : messages.length === 0 ? (

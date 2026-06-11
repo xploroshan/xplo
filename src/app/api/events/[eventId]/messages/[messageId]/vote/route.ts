@@ -29,39 +29,51 @@ export async function POST(
     return NextResponse.json({ error: "Invalid option" }, { status: 400 })
   }
 
-  const msg = await db.message.findFirst({
-    where: { id: messageId, eventId, type: "POLL", deleted: false },
-    select: { id: true, metadata: true },
+  // Lock the poll row so concurrent votes serialize — otherwise two voters
+  // reading the same tally would each write back, dropping one of the votes.
+  const result = await db.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<{ metadata: MsgMeta | null }[]>`
+      SELECT "metadata" FROM "Message"
+      WHERE "id" = ${messageId} AND "eventId" = ${eventId}
+        AND "type" = 'POLL' AND "deleted" = false
+      FOR UPDATE
+    `
+    if (locked.length === 0) return { error: "notfound" as const }
+
+    const meta = (locked[0].metadata ?? {}) as MsgMeta
+    if (!meta.poll || parsed.data.option >= meta.poll.options.length) {
+      return { error: "invalid" as const }
+    }
+
+    const votes: Record<string, string[]> = {}
+    for (const [k, v] of Object.entries(meta.poll.votes ?? {})) votes[k] = [...v]
+    const key = String(parsed.data.option)
+    const already = (votes[key] ?? []).includes(userId)
+
+    if (!meta.poll.multi) {
+      // Single choice: remove the user from every option first.
+      for (const k of Object.keys(votes)) votes[k] = votes[k].filter((u) => u !== userId)
+    }
+    const set = new Set(votes[key] ?? [])
+    if (already && meta.poll.multi) set.delete(userId)
+    else set.add(userId)
+    votes[key] = [...set]
+
+    const updated = await tx.message.update({
+      where: { id: messageId },
+      data: { metadata: { ...meta, poll: { ...meta.poll, votes } } as object },
+      select: MESSAGE_SELECT,
+    })
+    return { updated }
   })
-  if (!msg) {
-    return NextResponse.json({ error: "Poll not found" }, { status: 404 })
-  }
-  const meta = ((msg.metadata as MsgMeta | null) ?? {}) as MsgMeta
-  if (!meta.poll || parsed.data.option >= meta.poll.options.length) {
-    return NextResponse.json({ error: "Invalid option" }, { status: 400 })
-  }
 
-  const votes: Record<string, string[]> = {}
-  for (const [k, v] of Object.entries(meta.poll.votes ?? {})) votes[k] = [...v]
-  const key = String(parsed.data.option)
-  const already = (votes[key] ?? []).includes(userId)
-
-  if (!meta.poll.multi) {
-    // Single choice: remove the user from every option first.
-    for (const k of Object.keys(votes)) votes[k] = votes[k].filter((u) => u !== userId)
+  if ("error" in result) {
+    return result.error === "notfound"
+      ? NextResponse.json({ error: "Poll not found" }, { status: 404 })
+      : NextResponse.json({ error: "Invalid option" }, { status: 400 })
   }
-  const set = new Set(votes[key] ?? [])
-  if (already && meta.poll.multi) set.delete(userId)
-  else set.add(userId)
-  votes[key] = [...set]
-
-  const updated = await db.message.update({
-    where: { id: messageId },
-    data: { metadata: { ...meta, poll: { ...meta.poll, votes } } as object },
-    select: MESSAGE_SELECT,
-  })
 
   await publishChange(eventChatChannel(eventId), "update")
 
-  return NextResponse.json({ message: presentMessage(updated, userId) })
+  return NextResponse.json({ message: presentMessage(result.updated, userId) })
 }

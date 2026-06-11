@@ -50,16 +50,22 @@ describe("reactions", () => {
     mockAuth.mockResolvedValue({ user: { id: "u-2", role: "USER" } } as never)
     mockDb.event.findUnique.mockResolvedValue(activeEvent as never)
     mockDb.eventParticipant.findUnique.mockResolvedValue({ status: "CONFIRMED", role: "MEMBER" } as never)
-    mockDb.message.findFirst.mockResolvedValue({ id: "msg-1", metadata: {} } as never)
-    mockDb.message.update.mockResolvedValue({
+    // Run inside a locked transaction: the row is read FOR UPDATE, then updated.
+    const txUpdate = vi.fn().mockResolvedValue({
       id: "msg-1", content: "hi", type: "TEXT", metadata: { reactions: { "🔥": ["u-2"] } },
       pinned: false, deleted: false, editedAt: null, createdAt: new Date(), senderId: "u-2",
       sender: { id: "u-2", name: "Sam", image: null }, replyTo: null,
-    } as never)
+    })
+    mockDb.$transaction.mockImplementation(async (fn) =>
+      fn({
+        $queryRaw: vi.fn().mockResolvedValue([{ metadata: {} }]),
+        message: { update: txUpdate },
+      } as never)
+    )
 
     const res = await REACT(reqJson({ emoji: "🔥" }), p())
     expect(res.status).toBe(200)
-    expect(mockDb.message.update).toHaveBeenCalled()
+    expect(txUpdate).toHaveBeenCalled()
   })
 
   it("rejects an unsupported emoji", async () => {
@@ -77,18 +83,23 @@ describe("poll vote", () => {
     mockAuth.mockResolvedValue({ user: { id: "u-2", role: "USER" } } as never)
     mockDb.event.findUnique.mockResolvedValue(activeEvent as never)
     mockDb.eventParticipant.findUnique.mockResolvedValue({ status: "CONFIRMED", role: "MEMBER" } as never)
-    mockDb.message.findFirst.mockResolvedValue({
-      id: "msg-1",
-      metadata: { poll: { question: "Q", options: ["A", "B"], votes: {}, multi: false } },
-    } as never)
-    mockDb.message.update.mockResolvedValue({
+    const txUpdate = vi.fn().mockResolvedValue({
       id: "msg-1", content: "Q", type: "POLL", metadata: { poll: { question: "Q", options: ["A", "B"], votes: { "1": ["u-2"] }, multi: false } },
       pinned: false, deleted: false, editedAt: null, createdAt: new Date(), senderId: "x",
       sender: { id: "x", name: "X", image: null }, replyTo: null,
-    } as never)
+    })
+    mockDb.$transaction.mockImplementation(async (fn) =>
+      fn({
+        $queryRaw: vi.fn().mockResolvedValue([
+          { metadata: { poll: { question: "Q", options: ["A", "B"], votes: {}, multi: false } } },
+        ]),
+        message: { update: txUpdate },
+      } as never)
+    )
 
     const res = await VOTE(reqJson({ option: 1 }), p())
     expect(res.status).toBe(200)
+    expect(txUpdate).toHaveBeenCalled()
   })
 })
 

@@ -32,27 +32,34 @@ export async function POST(
   }
   const emoji = parsed.data.emoji
 
-  const msg = await db.message.findFirst({
-    where: { id: messageId, eventId, deleted: false },
-    select: { id: true, metadata: true },
+  // Lock the row for the read-modify-write so two simultaneous reactions on the
+  // same message can't overwrite each other's JSON metadata (lost update).
+  const updated = await db.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<{ metadata: MsgMeta | null }[]>`
+      SELECT "metadata" FROM "Message"
+      WHERE "id" = ${messageId} AND "eventId" = ${eventId} AND "deleted" = false
+      FOR UPDATE
+    `
+    if (locked.length === 0) return null
+
+    const meta = (locked[0].metadata ?? {}) as MsgMeta
+    const reactions = { ...(meta.reactions ?? {}) }
+    const users = new Set(reactions[emoji] ?? [])
+    if (users.has(userId)) users.delete(userId)
+    else users.add(userId)
+    if (users.size === 0) delete reactions[emoji]
+    else reactions[emoji] = [...users]
+
+    return tx.message.update({
+      where: { id: messageId },
+      data: { metadata: { ...meta, reactions } as object },
+      select: MESSAGE_SELECT,
+    })
   })
-  if (!msg) {
+
+  if (!updated) {
     return NextResponse.json({ error: "Message not found" }, { status: 404 })
   }
-
-  const meta = ((msg.metadata as MsgMeta | null) ?? {}) as MsgMeta
-  const reactions = { ...(meta.reactions ?? {}) }
-  const users = new Set(reactions[emoji] ?? [])
-  if (users.has(userId)) users.delete(userId)
-  else users.add(userId)
-  if (users.size === 0) delete reactions[emoji]
-  else reactions[emoji] = [...users]
-
-  const updated = await db.message.update({
-    where: { id: messageId },
-    data: { metadata: { ...meta, reactions } as object },
-    select: MESSAGE_SELECT,
-  })
 
   await publishChange(eventChatChannel(eventId), "update")
 
