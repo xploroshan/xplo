@@ -13,23 +13,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
   }
 
-  let event: { event?: string; payload?: { payment?: { entity?: { order_id?: string; id?: string } } } }
+  let event: {
+    event?: string
+    payload?: {
+      payment?: { entity?: { order_id?: string; id?: string } }
+      order?: { entity?: { id?: string } }
+    }
+  }
   try {
     event = JSON.parse(raw)
   } catch {
     return NextResponse.json({ error: "Bad payload" }, { status: 400 })
   }
 
-  if (event.event === "payment.captured" || event.event === "order.paid") {
-    const entity = event.payload?.payment?.entity
-    const razorpayOrderId = entity?.order_id
-    if (razorpayOrderId) {
-      const order = await db.order.findUnique({
-        where: { razorpayOrderId },
-        select: { id: true },
-      })
-      if (order) await fulfillOrder(order.id, entity?.id)
-    }
+  // payment.captured (primary) and order.paid carry the order id in different
+  // places — resolve from whichever is present.
+  let razorpayOrderId: string | undefined
+  let paymentId: string | undefined
+  if (event.event === "payment.captured") {
+    razorpayOrderId = event.payload?.payment?.entity?.order_id
+    paymentId = event.payload?.payment?.entity?.id
+  } else if (event.event === "order.paid") {
+    razorpayOrderId = event.payload?.order?.entity?.id
+    paymentId = event.payload?.payment?.entity?.id
+  }
+
+  if (razorpayOrderId) {
+    const order = await db.order.findUnique({
+      where: { razorpayOrderId },
+      select: { id: true },
+    })
+    if (order) await fulfillOrder(order.id, paymentId)
   }
 
   // Always 200 so Razorpay doesn't retry a handled (or irrelevant) event.

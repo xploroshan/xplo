@@ -9,17 +9,21 @@ import { db } from "@/lib/db"
  * @returns true if this call performed the fulfillment, false if already done.
  */
 export async function fulfillOrder(orderId: string, razorpayPaymentId?: string): Promise<boolean> {
-  const order = await db.order.findUnique({
-    where: { id: orderId },
-    select: { id: true, status: true, eventId: true, userId: true, ticketTypeId: true, quantity: true },
-  })
-  if (!order) return false
-  if (order.status === "PAID") return false // already fulfilled
-
-  await db.order.update({
-    where: { id: order.id },
+  // Atomic single-fulfillment guard: only the first caller flips the order to
+  // PAID. A concurrent verify-callback + webhook can't both pass this. We allow
+  // PENDING *or* FAILED → PAID (a forged-verify may have marked it FAILED before
+  // the genuine webhook arrives), but never re-fulfill a PAID/REFUNDED order.
+  const claim = await db.order.updateMany({
+    where: { id: orderId, status: { notIn: ["PAID", "REFUNDED"] } },
     data: { status: "PAID", razorpayPaymentId: razorpayPaymentId ?? undefined },
   })
+  if (claim.count === 0) return false // already fulfilled, refunded, or missing
+
+  const order = await db.order.findUnique({
+    where: { id: orderId },
+    select: { id: true, eventId: true, userId: true, ticketTypeId: true, quantity: true },
+  })
+  if (!order) return false
 
   if (order.ticketTypeId) {
     await db.ticketType.update({
