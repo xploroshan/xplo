@@ -1,68 +1,70 @@
-"use client"
-
-import { useState } from "react"
-import { useSession } from "next-auth/react"
-import { motion } from "framer-motion"
-import {
-  Settings,
-  MapPin,
-  Calendar,
-  Users,
-  Route,
-  Trophy,
-  UserPlus,
-  Sparkles,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Suspense } from "react"
+import Link from "next/link"
+import { redirect } from "next/navigation"
+import { MapPin, Calendar, Users, CalendarCheck, CheckCircle2 } from "lucide-react"
+import { db } from "@/lib/db"
+import { auth } from "@/lib/auth"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { BadgeIcon } from "@/components/ui/badge-icon"
-import { EventCard } from "@/components/events/event-card"
 import { OrganizerCta } from "@/components/profile/organizer-cta"
 import { ChangePassword } from "@/components/profile/change-password"
-import { MOCK_EVENTS, MOCK_BADGES, MOCK_ACTIVITIES } from "@/lib/mock-data"
+import { EditProfile } from "@/components/profile/edit-profile"
+import { EmailVerification } from "@/components/profile/email-verification"
+import { TwoFactor } from "@/components/profile/two-factor"
 
-const tabs = ["Activity", "Events", "Badges", "Settings"] as const
-type Tab = (typeof tabs)[number]
+export const metadata = { title: "Your profile — HYKRZ" }
 
-const activityIcons = {
-  join: UserPlus,
-  complete: Trophy,
-  create: Sparkles,
-  badge: Trophy,
-}
+export default async function ProfilePage() {
+  const session = await auth()
+  if (!session?.user?.id) redirect("/login?callbackUrl=/profile")
 
-export default function ProfilePage() {
-  const { data: session } = useSession()
-  const [activeTab, setActiveTab] = useState<Tab>("Activity")
+  const userId = session.user.id
+  const now = new Date()
 
-  const name = session?.user?.name || "HYKRZ User"
-  const email = session?.user?.email || ""
+  const [user, going, organizing, following, upcoming] = await Promise.all([
+    db.user.findUnique({
+      where: { id: userId },
+      select: {
+        name: true, email: true, image: true, bio: true, city: true, interests: true,
+        emailVerified: true, twoFactorEnabled: true, role: true, createdAt: true,
+      },
+    }),
+    db.eventParticipant.count({ where: { userId, status: "CONFIRMED" } }),
+    db.event.count({ where: { organizerId: userId } }),
+    db.follow.count({ where: { followerId: userId } }),
+    db.eventParticipant.findMany({
+      where: { userId, status: { not: "CANCELLED" }, event: { startDate: { gte: now } } },
+      orderBy: { event: { startDate: "asc" } },
+      take: 5,
+      select: {
+        status: true,
+        event: { select: { slug: true, title: true, startDate: true, eventType: { select: { name: true, color: true } } } },
+      },
+    }),
+  ])
+  if (!user) redirect("/login")
+
+  const name = user.name || "HYKRZ User"
   const initials = name.charAt(0).toUpperCase()
+  const memberSince = user.createdAt.getFullYear()
+  const isOrganizer = ["ORGANIZER", "ADMIN", "SUPER_ADMIN"].includes(user.role)
 
-  const earnedBadges = MOCK_BADGES.filter((b) => b.earned).length
-  const upcomingEvents = MOCK_EVENTS.filter((e) => new Date(e.startDate) > new Date()).slice(0, 3)
-  const pastEvents = MOCK_EVENTS.filter((e) => new Date(e.startDate) <= new Date()).slice(0, 2)
+  const stats = [
+    { label: "Going", value: going, icon: CalendarCheck },
+    { label: "Organizing", value: organizing, icon: Calendar },
+    { label: "Following", value: following, icon: Users },
+  ]
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
-      {/* Cover + Profile Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="rounded-2xl overflow-hidden border border-zinc-800/50 mb-6"
-      >
-        {/* Cover Banner */}
-        <div className="h-32 sm:h-40 bg-gradient-to-br from-orange-500/20 via-amber-500/10 to-transparent relative">
-          <div className="absolute top-4 right-4 w-48 h-48 rounded-full blur-[80px] bg-orange-500/15" />
-        </div>
-
-        {/* Profile Info */}
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      {/* Header */}
+      <div className="rounded-2xl overflow-hidden border border-zinc-800/50">
+        <div className="h-28 sm:h-36 bg-gradient-to-br from-orange-500/20 via-amber-500/10 to-transparent" />
         <div className="relative px-5 pb-5">
           <Avatar className="h-20 w-20 -mt-10 border-4 border-zinc-950 shadow-xl">
-            {session?.user?.image ? (
+            {user.image ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={session.user.image} alt="" className="h-full w-full object-cover" />
+              <img src={user.image} alt="" className="h-full w-full object-cover" />
             ) : (
               <AvatarFallback className="bg-gradient-to-br from-orange-500 to-amber-500 text-white text-2xl font-bold">
                 {initials}
@@ -70,153 +72,96 @@ export default function ProfilePage() {
             )}
           </Avatar>
 
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between mt-3 gap-3">
-            <div>
+          <div className="mt-3">
+            <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-white">{name}</h1>
-              <p className="text-sm text-zinc-400">{email}</p>
-              <div className="flex items-center gap-3 mt-2 text-sm text-zinc-500">
+              {user.emailVerified && <CheckCircle2 className="h-4 w-4 text-green-400" />}
+              {isOrganizer && (
+                <Badge className="bg-orange-500/15 text-orange-400 border-0 text-[10px]">Organizer</Badge>
+              )}
+            </div>
+            <p className="text-sm text-zinc-400">{user.email}</p>
+            {user.bio && <p className="text-sm text-zinc-300 mt-2 max-w-lg">{user.bio}</p>}
+            <div className="flex items-center gap-3 mt-2 text-sm text-zinc-500">
+              {user.city && (
                 <span className="flex items-center gap-1">
                   <MapPin className="h-3.5 w-3.5" />
-                  Bangalore, India
+                  {user.city}
                 </span>
-                <span className="flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5" />
-                  Member since 2026
-                </span>
-              </div>
+              )}
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3.5 w-3.5" />
+                Member since {memberSince}
+              </span>
             </div>
-            <Button variant="outline" className="rounded-xl border-zinc-700 text-sm gap-2 w-fit">
-              <Settings className="h-4 w-4" />
-              Edit Profile
-            </Button>
+            {user.interests.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                {user.interests.map((it) => (
+                  <span key={it} className="rounded-full bg-zinc-800/60 px-2.5 py-1 text-[11px] text-zinc-300">
+                    {it}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-4 gap-3 mt-5">
-            {[
-              { label: "Events", value: "8", icon: Calendar },
-              { label: "Following", value: "12", icon: Users },
-              { label: "Badges", value: String(earnedBadges), icon: Trophy },
-              { label: "Distance", value: "340km", icon: Route },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="text-center py-3 rounded-xl bg-zinc-800/30 border border-zinc-800/50"
-              >
-                <stat.icon className="h-4 w-4 text-orange-500 mx-auto mb-1" />
-                <p className="text-lg font-bold text-white">{stat.value}</p>
-                <p className="text-[10px] text-zinc-500 uppercase tracking-wider">{stat.label}</p>
+          <div className="grid grid-cols-3 gap-3 mt-5">
+            {stats.map((s) => (
+              <div key={s.label} className="text-center py-3 rounded-xl bg-zinc-800/30 border border-zinc-800/50">
+                <s.icon className="h-4 w-4 text-orange-500 mx-auto mb-1" />
+                <p className="text-lg font-bold text-white">{s.value}</p>
+                <p className="text-[10px] text-zinc-500 uppercase tracking-wider">{s.label}</p>
               </div>
             ))}
           </div>
         </div>
-      </motion.div>
-
-      {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-zinc-800/50 mb-6 overflow-x-auto">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm font-medium transition-all border-b-2 whitespace-nowrap ${
-              activeTab === tab
-                ? "text-orange-500 border-orange-500"
-                : "text-zinc-500 border-transparent hover:text-zinc-300"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
       </div>
 
-      {/* Tab Content */}
-      <motion.div
-        key={activeTab}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        {activeTab === "Activity" && (
-          <div className="space-y-3">
-            {MOCK_ACTIVITIES.map((activity) => {
-              const Icon = activityIcons[activity.type]
-              const color = activity.event?.typeColor || "#f97316"
-              return (
-                <div
-                  key={activity.id}
-                  className="flex items-start gap-3 rounded-xl border border-zinc-800/50 bg-zinc-900/50 p-4"
-                >
-                  <div
-                    className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: `${color}15` }}
-                  >
-                    <Icon className="h-4 w-4" style={{ color }} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-zinc-300">
-                      <span className="font-medium text-white">{activity.user.name}</span>
-                      {" "}{activity.description}
-                    </p>
-                    {activity.event && (
-                      <p className="text-xs font-medium mt-0.5" style={{ color }}>
-                        {activity.event.title}
-                      </p>
-                    )}
-                    <p className="text-[11px] text-zinc-600 mt-1">
-                      {new Date(activity.createdAt).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-
-        {activeTab === "Events" && (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-                Upcoming ({upcomingEvents.length})
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {upcomingEvents.map((e, i) => (
-                  <EventCard key={e.id} event={e} index={i} />
-                ))}
-              </div>
-            </div>
-            {pastEvents.length > 0 && (
-              <div>
-                <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-                  Past Events ({pastEvents.length})
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {pastEvents.map((e, i) => (
-                    <EventCard key={e.id} event={e} index={i} />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === "Badges" && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {MOCK_BADGES.map((badge) => (
-              <BadgeIcon key={badge.id} badge={badge} />
+      {/* Upcoming rides */}
+      {upcoming.length > 0 && (
+        <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-5">
+          <h2 className="text-sm font-semibold text-white mb-3">Your upcoming rides</h2>
+          <div className="space-y-2">
+            {upcoming.map((p) => (
+              <Link
+                key={p.event.slug}
+                href={`/events/${p.event.slug}`}
+                className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-zinc-800/50 transition-colors"
+              >
+                <span
+                  className="h-2 w-2 rounded-full shrink-0"
+                  style={{ backgroundColor: p.event.eventType?.color || "#f97316" }}
+                />
+                <span className="text-sm text-white flex-1 truncate">{p.event.title}</span>
+                <span className="text-xs text-zinc-500">
+                  {new Date(p.event.startDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                </span>
+                <Badge className="bg-zinc-800 text-zinc-400 border-0 text-[10px]">{p.status.toLowerCase()}</Badge>
+              </Link>
             ))}
           </div>
-        )}
+        </div>
+      )}
 
-        {activeTab === "Settings" && (
-          <div className="space-y-6">
-            <OrganizerCta />
-            <ChangePassword />
-          </div>
-        )}
-      </motion.div>
+      {/* Security & settings */}
+      <div className="space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">Account & security</h2>
+        <Suspense fallback={null}>
+          <EmailVerification verified={!!user.emailVerified} />
+        </Suspense>
+        <EditProfile
+          initial={{
+            name: user.name || "",
+            bio: user.bio || "",
+            city: user.city || "",
+            image: user.image,
+            interests: user.interests,
+          }}
+        />
+        <TwoFactor enabled={user.twoFactorEnabled} />
+        <ChangePassword />
+        {!isOrganizer && <OrganizerCta />}
+      </div>
     </div>
   )
 }

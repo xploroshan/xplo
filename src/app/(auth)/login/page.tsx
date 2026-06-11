@@ -13,6 +13,8 @@ export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [code, setCode] = useState("")
+  const [showCode, setShowCode] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -26,11 +28,14 @@ export default function LoginPage() {
       const result = await signIn("credentials", {
         email,
         password,
+        code: code.trim(),
         redirect: false,
       })
 
       if (result?.error) {
-        setError("Invalid email or password")
+        // Could be a missing/invalid 2FA code — reveal the field so they can retry.
+        setShowCode(true)
+        setError(showCode ? "Invalid email, password, or 2FA code" : "Invalid email or password. If you have 2FA on, enter your code below.")
       } else {
         router.push("/events")
         router.refresh()
@@ -105,6 +110,20 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {showCode && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-300">Two-factor code</label>
+              <Input
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="6-digit code from your authenticator"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus-visible:ring-orange-500 tracking-widest"
+              />
+            </div>
+          )}
+
           <Button
             type="submit"
             variant="glow"
@@ -113,6 +132,16 @@ export default function LoginPage() {
           >
             {loading ? "Signing in..." : "Sign In"}
           </Button>
+
+          {!showCode && (
+            <button
+              type="button"
+              onClick={() => setShowCode(true)}
+              className="w-full text-center text-xs text-zinc-500 hover:text-zinc-300"
+            >
+              Have two-factor enabled? Enter a code
+            </button>
+          )}
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">

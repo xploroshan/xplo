@@ -110,6 +110,12 @@ vi.mock("@/lib/db", () => ({
       update: vi.fn(),
       deleteMany: vi.fn(),
     },
+    emailVerificationToken: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
+    },
     organization: {
       findUnique: vi.fn(),
       findUniqueOrThrow: vi.fn(),

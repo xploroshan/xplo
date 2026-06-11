@@ -131,6 +131,18 @@ export function rsvpConfirmationEmail(args: {
   }
 }
 
+export function verifyEmailEmail(verifyUrl: string): { subject: string; html: string; text: string } {
+  return {
+    subject: "Verify your HYKRZ email",
+    html: layout(
+      "Confirm your email",
+      "Tap below to verify your email address and unlock everything on HYKRZ. This link expires in 24 hours.",
+      { label: "Verify email", url: verifyUrl }
+    ),
+    text: `Verify your HYKRZ email (expires in 24 hours):\n${verifyUrl}`,
+  }
+}
+
 export function eventAnnouncementEmail(args: {
   eventTitle: string
   eventUrl: string
