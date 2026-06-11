@@ -55,6 +55,7 @@ export default async function ManageEventPage({ params }: PageProps) {
       status: true,
       role: true,
       joinedAt: true,
+      checkedInAt: true,
       user: { select: { id: true, name: true, image: true, slug: true, city: true } },
     },
   })
@@ -90,6 +91,7 @@ export default async function ManageEventPage({ params }: PageProps) {
           status: p.status,
           role: p.role,
           joinedAt: p.joinedAt.toISOString(),
+          checkedInAt: p.checkedInAt ? p.checkedInAt.toISOString() : null,
           user: p.user,
         }))}
       />

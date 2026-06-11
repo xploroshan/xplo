@@ -247,6 +247,7 @@ model EventParticipant {
   role      ParticipantRole   @default(MEMBER)
   chatMuted Boolean           @default(false)  // Replaces GroupMember.mutedAt
   joinedAt  DateTime          @default(now())
+  checkedInAt DateTime?       // Set when the organizer scans/checks in the rider at the assembly point
 
   // Post-event rating (FR-4.24)
   rating    Int?              // 1–5 stars

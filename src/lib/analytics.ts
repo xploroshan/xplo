@@ -10,6 +10,7 @@ export type AnalyticsName =
   | "organizer_followed"
   | "share_clicked"
   | "link_copied"
+  | "participant_checked_in"
 
 export const ANALYTICS_NAMES: readonly AnalyticsName[] = [
   "event_published",
@@ -19,6 +20,7 @@ export const ANALYTICS_NAMES: readonly AnalyticsName[] = [
   "organizer_followed",
   "share_clicked",
   "link_copied",
+  "participant_checked_in",
 ]
 
 interface TrackData {

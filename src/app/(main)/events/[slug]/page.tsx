@@ -22,7 +22,7 @@ import { EventMap } from "@/components/events/event-map"
 import { EventActions } from "@/components/events/event-actions"
 import { RateEventForm } from "@/components/events/rate-event-form"
 import { googleCalendarUrl } from "@/lib/ics"
-import { Star } from "lucide-react"
+import { Star, QrCode } from "lucide-react"
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -415,13 +415,23 @@ export default async function EventDetailPage({ params }: PageProps) {
                   </Button>
                 </Link>
               ) : REGISTERABLE.includes(event.status) ? (
-                <EventRegisterButton
-                  eventId={event.id}
-                  isRegistered={isRegistered}
-                  isAuthenticated={!!session?.user}
-                  isFull={isFull}
-                  organizerSlug={event.organizer.slug || ""}
-                />
+                <div className="space-y-2">
+                  <EventRegisterButton
+                    eventId={event.id}
+                    isRegistered={isRegistered}
+                    isAuthenticated={!!session?.user}
+                    isFull={isFull}
+                    organizerSlug={event.organizer.slug || ""}
+                  />
+                  {myParticipation?.status === "CONFIRMED" && (
+                    <Link href={`/events/${event.slug}/pass`}>
+                      <Button variant="outline" className="w-full rounded-xl border-zinc-700 gap-2">
+                        <QrCode className="h-4 w-4" />
+                        View my pass
+                      </Button>
+                    </Link>
+                  )}
+                </div>
               ) : (
                 <Button disabled className="w-full rounded-xl">
                   Registration closed
