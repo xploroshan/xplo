@@ -36,6 +36,9 @@ interface EventData {
   coverImage: string | null
   startLocationAddress: string
   destinationAddress: string
+  assemblyPointAddress: string
+  assemblyPointTime: string
+  checklist: string[]
 }
 
 const EVENT_STATUSES = ["DRAFT", "PUBLISHED", "OPEN", "CLOSED", "ACTIVE", "COMPLETED", "ARCHIVED"]
@@ -326,6 +329,9 @@ function EditTab({ event }: { event: EventData }) {
     coverImage: event.coverImage,
     startLocationAddress: event.startLocationAddress,
     destinationAddress: event.destinationAddress,
+    assemblyPointAddress: event.assemblyPointAddress,
+    assemblyPointTime: event.assemblyPointTime,
+    checklist: event.checklist.join("\n"),
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -350,6 +356,12 @@ function EditTab({ event }: { event: EventData }) {
           coverImage: form.coverImage,
           startLocationAddress: form.startLocationAddress || null,
           destinationAddress: form.destinationAddress || null,
+          assemblyPointAddress: form.assemblyPointAddress || null,
+          assemblyPointTime: form.assemblyPointTime || null,
+          checklist: form.checklist
+            .split("\n")
+            .map((l) => l.trim())
+            .filter(Boolean),
         }),
       })
       const data = await res.json()
@@ -405,6 +417,24 @@ function EditTab({ event }: { event: EventData }) {
           <label className={label}>Destination</label>
           <Input value={form.destinationAddress} onChange={(e) => setForm({ ...form, destinationAddress: e.target.value })} />
         </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className={label}>Assembly point</label>
+          <Input value={form.assemblyPointAddress} onChange={(e) => setForm({ ...form, assemblyPointAddress: e.target.value })} />
+        </div>
+        <div>
+          <label className={label}>Assembly time</label>
+          <Input value={form.assemblyPointTime} onChange={(e) => setForm({ ...form, assemblyPointTime: e.target.value })} />
+        </div>
+      </div>
+      <div>
+        <label className={label}>Pre-ride checklist (one per line)</label>
+        <Textarea
+          rows={4}
+          value={form.checklist}
+          onChange={(e) => setForm({ ...form, checklist: e.target.value })}
+        />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>

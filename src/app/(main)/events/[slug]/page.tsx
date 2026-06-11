@@ -21,8 +21,9 @@ import { TrackView } from "@/components/analytics/track-view"
 import { EventMap } from "@/components/events/event-map"
 import { EventActions } from "@/components/events/event-actions"
 import { RateEventForm } from "@/components/events/rate-event-form"
+import { RemindButton } from "@/components/events/remind-button"
 import { googleCalendarUrl } from "@/lib/ics"
-import { Star, QrCode } from "lucide-react"
+import { Star, QrCode, ListChecks, Flag } from "lucide-react"
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -42,6 +43,8 @@ async function getEvent(slug: string) {
       endDate: true,
       startLocation: true,
       destination: true,
+      assemblyPoint: true,
+      checklist: true,
       capacity: true,
       price: true,
       currency: true,
@@ -115,6 +118,16 @@ export default async function EventDetailPage({ params }: PageProps) {
     myParticipation = p
   }
 
+  // "Remind me" state (only relevant when the event isn't open yet).
+  let isReminding = false
+  if (session?.user?.id && event.status === "CLOSED") {
+    const r = await db.eventReminder.findUnique({
+      where: { userId_eventId: { userId: session.user.id, eventId: event.id } },
+      select: { id: true },
+    })
+    isReminding = !!r
+  }
+
   // Post-event reviews (shown once the ride is done)
   const isCompleted = ["COMPLETED", "ARCHIVED"].includes(event.status)
   const reviews = isCompleted
@@ -160,6 +173,9 @@ export default async function EventDetailPage({ params }: PageProps) {
   const destinationAddress = addressOf(event.destination)
   const startAddress = addressOf(event.startLocation)
   const isOrganizer = session?.user?.id === event.organizer.id
+  const assembly = (event.assemblyPoint as { address?: string; time?: string } | null) ?? {}
+  const checklist = Array.isArray(event.checklist) ? (event.checklist as string[]) : []
+  const isConfirmed = myParticipation?.status === "CONFIRMED"
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
@@ -285,6 +301,36 @@ export default async function EventDetailPage({ params }: PageProps) {
                   destinationAddress={destinationAddress}
                 />
               </div>
+            </div>
+          )}
+
+          {/* Assembly point — shown to confirmed riders */}
+          {isConfirmed && (assembly.address || assembly.time) && (
+            <div className="rounded-2xl border border-orange-500/20 bg-orange-500/5 p-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Flag className="h-5 w-5 text-orange-400" />
+                <h3 className="text-sm font-semibold text-orange-300">Assembly point</h3>
+              </div>
+              {assembly.address && <p className="text-sm text-white">{assembly.address}</p>}
+              {assembly.time && <p className="text-xs text-zinc-400 mt-0.5">Be there by {assembly.time}</p>}
+            </div>
+          )}
+
+          {/* Pre-ride checklist */}
+          {checklist.length > 0 && (
+            <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <ListChecks className="h-5 w-5 text-orange-500" />
+                <h2 className="text-base font-semibold text-white">What to bring</h2>
+              </div>
+              <ul className="space-y-2">
+                {checklist.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-zinc-300">
+                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-orange-500 shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
@@ -432,6 +478,12 @@ export default async function EventDetailPage({ params }: PageProps) {
                     </Link>
                   )}
                 </div>
+              ) : event.status === "CLOSED" ? (
+                <RemindButton
+                  eventId={event.id}
+                  isAuthenticated={!!session?.user}
+                  initialReminding={isReminding}
+                />
               ) : (
                 <Button disabled className="w-full rounded-xl">
                   Registration closed

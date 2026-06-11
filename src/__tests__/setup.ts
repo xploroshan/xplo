@@ -68,6 +68,8 @@ vi.mock("@/lib/db", () => ({
     event: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
       count: vi.fn(),
     },
     eventParticipant: {
@@ -94,6 +96,13 @@ vi.mock("@/lib/db", () => ({
     notification: {
       create: vi.fn(),
       createMany: vi.fn(),
+    },
+    eventReminder: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      upsert: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
     },
     passwordResetToken: {
       findUnique: vi.fn(),

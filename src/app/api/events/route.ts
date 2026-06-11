@@ -21,6 +21,9 @@ const createEventBody = z.object({
   coverImage: z.string().url().optional(),
   requiresApproval: z.boolean().optional(),
   organizationId: z.string().optional(),
+  assemblyPointAddress: z.string().optional(),
+  assemblyPointTime: z.string().optional(),
+  checklist: z.array(z.string().min(1).max(120)).max(30).optional(),
 })
 
 async function uniqueSlug(base: string): Promise<string> {
@@ -130,6 +133,11 @@ export async function POST(request: Request) {
         coverImage: data.coverImage,
         requiresApproval: data.requiresApproval ?? false,
         organizationId: data.organizationId,
+        assemblyPoint:
+          data.assemblyPointAddress || data.assemblyPointTime
+            ? { address: data.assemblyPointAddress, time: data.assemblyPointTime }
+            : undefined,
+        checklist: data.checklist && data.checklist.length > 0 ? data.checklist : undefined,
         // Publish straight to OPEN so it's immediately shareable and joinable.
         status: "OPEN",
       },
