@@ -18,6 +18,7 @@ interface Participant {
   status: Status
   role: Role
   joinedAt: string
+  checkedInAt: string | null
   user: { id: string; name: string | null; image: string | null; slug: string | null; city: string | null }
 }
 
@@ -75,6 +76,22 @@ export function ManageDashboard({
     )
   }
 
+  async function checkIn(args: { participantId?: string; code?: string; checkedIn?: boolean }): Promise<string | null> {
+    const res = await fetch(`/api/events/${event.id}/checkin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(args),
+    })
+    const data = await res.json()
+    if (!res.ok) return data.error || "Check-in failed"
+    setParticipants((prev) =>
+      prev.map((p) =>
+        p.id === data.participant.id ? { ...p, checkedInAt: data.participant.checkedInAt } : p
+      )
+    )
+    return null
+  }
+
   const tabs = [
     { key: "roster" as const, label: "Roster", icon: Users },
     { key: "edit" as const, label: "Edit", icon: Pencil },
@@ -119,6 +136,7 @@ export function ManageDashboard({
           confirmed={confirmed}
           waitlisted={waitlisted}
           onUpdate={updateParticipant}
+          onCheckIn={checkIn}
         />
       )}
       {tab === "edit" && <EditTab event={event} />}
@@ -161,14 +179,55 @@ function RosterTab({
   confirmed,
   waitlisted,
   onUpdate,
+  onCheckIn,
 }: {
   pending: Participant[]
   confirmed: Participant[]
   waitlisted: Participant[]
   onUpdate: (id: string, body: { status?: Status; role?: Role }) => void
+  onCheckIn: (args: { participantId?: string; code?: string; checkedIn?: boolean }) => Promise<string | null>
 }) {
+  const [scanCode, setScanCode] = useState("")
+  const [scanMsg, setScanMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  async function submitCode() {
+    if (!scanCode.trim()) return
+    const error = await onCheckIn({ code: scanCode })
+    setScanMsg(error ? { ok: false, text: error } : { ok: true, text: "Checked in ✓" })
+    if (!error) setScanCode("")
+    setTimeout(() => setScanMsg(null), 3000)
+  }
+
+  const checkedInCount = confirmed.filter((p) => p.checkedInAt).length
+
   return (
     <div className="space-y-8">
+      {/* Assembly-point check-in: scan a pass QR (hardware scanners type the
+          payload) or enter the rider's short code. */}
+      <section className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-4">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold text-white">Check-in</h2>
+          <span className="text-xs text-zinc-500">
+            {checkedInCount}/{confirmed.length} arrived
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <Input
+            placeholder="Scan QR or type pass code (e.g. 7GK2-Q9XD)"
+            value={scanCode}
+            onChange={(e) => setScanCode(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submitCode()}
+          />
+          <Button variant="glow" onClick={submitCode} disabled={!scanCode.trim()}>
+            Check in
+          </Button>
+        </div>
+        {scanMsg && (
+          <p className={cn("text-sm mt-2", scanMsg.ok ? "text-green-400" : "text-red-400")}>
+            {scanMsg.text}
+          </p>
+        )}
+      </section>
       {pending.length > 0 && (
         <section>
           <h2 className="text-sm font-semibold text-white mb-2">Requests ({pending.length})</h2>
@@ -198,6 +257,24 @@ function RosterTab({
             {confirmed.map((p) => (
               <PersonRow key={p.id} p={p}>
                 <div className="flex items-center gap-2">
+                  {p.checkedInAt ? (
+                    <button
+                      onClick={() => onCheckIn({ participantId: p.id, checkedIn: false })}
+                      title="Undo check-in"
+                      className="inline-flex items-center gap-1 rounded-lg bg-green-500/15 text-green-400 text-xs font-medium px-2 py-1.5 hover:bg-green-500/25"
+                    >
+                      <Check className="h-3.5 w-3.5" /> Arrived
+                    </button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 text-xs"
+                      onClick={() => onCheckIn({ participantId: p.id })}
+                    >
+                      Check in
+                    </Button>
+                  )}
                   <select
                     value={p.role}
                     onChange={(e) => onUpdate(p.id, { role: e.target.value as Role })}

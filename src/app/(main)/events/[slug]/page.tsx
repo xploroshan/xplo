@@ -18,6 +18,11 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { EventRegisterButton } from "@/components/organizer/event-register-button"
 import { TrackView } from "@/components/analytics/track-view"
+import { EventMap } from "@/components/events/event-map"
+import { EventActions } from "@/components/events/event-actions"
+import { RateEventForm } from "@/components/events/rate-event-form"
+import { googleCalendarUrl } from "@/lib/ics"
+import { Star, QrCode } from "lucide-react"
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -100,13 +105,36 @@ export default async function EventDetailPage({ params }: PageProps) {
 
   const session = await auth()
   let isRegistered = false
+  let myParticipation: { status: string; rating: number | null; review: string | null } | null = null
   if (session?.user?.id) {
     const p = await db.eventParticipant.findUnique({
       where: { userId_eventId: { userId: session.user.id, eventId: event.id } },
-      select: { status: true },
+      select: { status: true, rating: true, review: true },
     })
     isRegistered = !!p && p.status !== "CANCELLED"
+    myParticipation = p
   }
+
+  // Post-event reviews (shown once the ride is done)
+  const isCompleted = ["COMPLETED", "ARCHIVED"].includes(event.status)
+  const reviews = isCompleted
+    ? await db.eventParticipant.findMany({
+        where: { eventId: event.id, rating: { not: null } },
+        orderBy: { joinedAt: "asc" },
+        take: 20,
+        select: {
+          id: true,
+          rating: true,
+          review: true,
+          user: { select: { name: true, image: true } },
+        },
+      })
+    : []
+  const avgRating =
+    reviews.length > 0
+      ? reviews.reduce((sum, r) => sum + (r.rating ?? 0), 0) / reviews.length
+      : null
+  const canReview = isCompleted && myParticipation?.status === "CONFIRMED"
 
   const start = new Date(event.startDate)
   const dateStr = start.toLocaleDateString("en-IN", {
@@ -251,6 +279,12 @@ export default async function EventDetailPage({ params }: PageProps) {
                   </div>
                 </div>
               </div>
+              <div className="mt-5">
+                <EventMap
+                  startAddress={startAddress}
+                  destinationAddress={destinationAddress}
+                />
+              </div>
             </div>
           )}
 
@@ -290,6 +324,54 @@ export default async function EventDetailPage({ params }: PageProps) {
                     </span>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Post-event: leave a review */}
+          {canReview && (
+            <RateEventForm
+              eventId={event.id}
+              initialRating={myParticipation?.rating}
+              initialReview={myParticipation?.review}
+            />
+          )}
+
+          {/* Post-event: reviews */}
+          {reviews.length > 0 && (
+            <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <h2 className="text-base font-semibold text-white">Reviews</h2>
+                {avgRating !== null && (
+                  <span className="inline-flex items-center gap-1 text-sm text-amber-400">
+                    <Star className="h-4 w-4 fill-amber-400" />
+                    {avgRating.toFixed(1)}
+                    <span className="text-zinc-500">({reviews.length})</span>
+                  </span>
+                )}
+              </div>
+              <div className="space-y-4">
+                {reviews.map((r) => (
+                  <div key={r.id} className="flex gap-3">
+                    <Avatar className="h-8 w-8 shrink-0">
+                      <AvatarFallback className="bg-zinc-700 text-zinc-300 text-[10px]">
+                        {r.user.name?.charAt(0) || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-white">{r.user.name || "Rider"}</span>
+                        <span className="inline-flex items-center gap-0.5 text-xs text-amber-400">
+                          <Star className="h-3 w-3 fill-amber-400" />
+                          {r.rating}
+                        </span>
+                      </div>
+                      {r.review && (
+                        <p className="text-sm text-zinc-400 mt-0.5 leading-relaxed">{r.review}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -333,18 +415,50 @@ export default async function EventDetailPage({ params }: PageProps) {
                   </Button>
                 </Link>
               ) : REGISTERABLE.includes(event.status) ? (
-                <EventRegisterButton
-                  eventId={event.id}
-                  isRegistered={isRegistered}
-                  isAuthenticated={!!session?.user}
-                  isFull={isFull}
-                  organizerSlug={event.organizer.slug || ""}
-                />
+                <div className="space-y-2">
+                  <EventRegisterButton
+                    eventId={event.id}
+                    isRegistered={isRegistered}
+                    isAuthenticated={!!session?.user}
+                    isFull={isFull}
+                    organizerSlug={event.organizer.slug || ""}
+                  />
+                  {myParticipation?.status === "CONFIRMED" && (
+                    <Link href={`/events/${event.slug}/pass`}>
+                      <Button variant="outline" className="w-full rounded-xl border-zinc-700 gap-2">
+                        <QrCode className="h-4 w-4" />
+                        View my pass
+                      </Button>
+                    </Link>
+                  )}
+                </div>
               ) : (
                 <Button disabled className="w-full rounded-xl">
                   Registration closed
                 </Button>
               )}
+            </div>
+
+            {/* Share + calendar */}
+            <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-5">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">
+                Share & save
+              </h3>
+              <EventActions
+                eventId={event.id}
+                slug={event.slug}
+                title={event.title}
+                whenText={`${dateStr}, ${timeStr}`}
+                googleCalUrl={googleCalendarUrl({
+                  id: event.id,
+                  title: event.title,
+                  description: event.description,
+                  start: new Date(event.startDate),
+                  end: event.endDate ? new Date(event.endDate) : null,
+                  location: destinationAddress ?? startAddress,
+                  url: `${APP_URL}/events/${event.slug}`,
+                })}
+              />
             </div>
 
             {/* Organizer card */}
