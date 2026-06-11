@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { useSession } from "next-auth/react"
 import {
   Compass,
+  LayoutGrid,
   MessageCircle,
   User,
   Bell,
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button"
 
 const navItems = [
   { label: "Discover", href: "/events", icon: Compass },
+  { label: "Feed", href: "/feed", icon: LayoutGrid },
   { label: "Organizations", href: "/organizations", icon: Building2 },
   { label: "Messages", href: "/messages", icon: MessageCircle },
   { label: "Profile", href: "/profile", icon: User },
@@ -26,9 +28,9 @@ const navItems = [
 
 const mobileNavItems = [
   { label: "Discover", href: "/events", icon: Compass },
-  { label: "Messages", href: "/messages", icon: MessageCircle },
+  { label: "Feed", href: "/feed", icon: LayoutGrid },
   { label: "Create", href: "/events/create", icon: Plus, isCreate: true },
-  { label: "Alerts", href: "/notifications", icon: Bell },
+  { label: "Messages", href: "/messages", icon: MessageCircle },
   { label: "Profile", href: "/profile", icon: User },
 ]
 

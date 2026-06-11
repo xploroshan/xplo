@@ -84,6 +84,12 @@ vi.mock("@/lib/db", () => ({
       findMany: vi.fn(),
       upsert: vi.fn(),
     },
+    locationPing: {
+      findMany: vi.fn(),
+      create: vi.fn(),
+      groupBy: vi.fn(),
+      deleteMany: vi.fn(),
+    },
     conversation: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -108,8 +114,21 @@ vi.mock("@/lib/db", () => ({
     },
     follow: {
       findUnique: vi.fn(),
+      findMany: vi.fn(),
       create: vi.fn(),
       delete: vi.fn(),
+    },
+    post: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+    comment: {
+      findMany: vi.fn(),
+      create: vi.fn(),
     },
     notification: {
       create: vi.fn(),
