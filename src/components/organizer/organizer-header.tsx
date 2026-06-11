@@ -6,6 +6,7 @@ import { FollowButton } from "./follow-button"
 import { PinOrganizerButton } from "./pin-organizer-button"
 import { ShareProfileButton } from "./share-profile-button"
 import { SocialLinks } from "./social-links"
+import { OrganizerBadges } from "./organizer-badges"
 
 interface OrganizerHeaderProps {
   organizer: {
@@ -25,6 +26,8 @@ interface OrganizerHeaderProps {
     avgRating: number | null
     ratingCount: number
   }
+  /** Year the organiser joined, for the "Since YYYY" achievement. */
+  memberSince: number | null
   isFollowing: boolean
   isPinned: boolean
   isAuthenticated: boolean
@@ -34,6 +37,7 @@ interface OrganizerHeaderProps {
 export function OrganizerHeader({
   organizer,
   stats,
+  memberSince,
   isFollowing,
   isPinned,
   isAuthenticated,
@@ -48,22 +52,61 @@ export function OrganizerHeader({
         .slice(0, 2)
     : "?"
 
+  // Deterministic, per-organiser hero gradient blended into the dark theme.
+  const seed = Array.from(organizer.name || "HYKRZ").reduce(
+    (a, c) => a + c.charCodeAt(0),
+    0
+  )
+  const hue = seed % 360
+  const coverGradient = `linear-gradient(135deg, hsl(${hue} 55% 16%) 0%, hsl(${(hue + 40) % 360} 45% 10%) 45%, #09090b 100%)`
+
   return (
     <div>
-      {/* Profile Info */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-        <Avatar className="h-24 w-24 border-2 border-orange-500/30">
-          {organizer.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={organizer.image} alt={organizer.name || ""} className="h-full w-full object-cover" />
-          ) : (
-            <AvatarFallback className="bg-orange-500/10 text-orange-500 text-2xl font-bold">
-              {initials}
-            </AvatarFallback>
-          )}
-        </Avatar>
+      {/* Cover / hero band */}
+      <div
+        className="relative h-32 sm:h-44 rounded-2xl overflow-hidden border border-zinc-800/50"
+        style={{ background: coverGradient }}
+      >
+        <div className="absolute -top-12 -right-12 h-64 w-64 rounded-full bg-orange-500/20 blur-3xl" />
+      </div>
 
-        <div className="flex-1 min-w-0">
+      {/* Avatar + actions */}
+      <div className="px-1 sm:px-2 -mt-12 sm:-mt-14">
+        <div className="flex items-end justify-between gap-4">
+          <Avatar className="h-24 w-24 sm:h-28 sm:w-28 border-4 border-background ring-2 ring-orange-500/30">
+            {organizer.image ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={organizer.image}
+                alt={organizer.name || ""}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <AvatarFallback className="bg-orange-500/10 text-orange-500 text-2xl font-bold">
+                {initials}
+              </AvatarFallback>
+            )}
+          </Avatar>
+
+          {!isOwnProfile && (
+            <div className="flex items-center gap-2 pb-1 shrink-0">
+              <FollowButton
+                organizerId={organizer.id}
+                initialFollowing={isFollowing}
+                isAuthenticated={isAuthenticated}
+              />
+              <PinOrganizerButton
+                organizerId={organizer.id}
+                initialPinned={isPinned}
+                isAuthenticated={isAuthenticated}
+              />
+              <ShareProfileButton slug={organizer.slug} name={organizer.name} />
+            </div>
+          )}
+        </div>
+
+        {/* Identity */}
+        <div className="mt-4">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold text-white">{organizer.name}</h1>
             {organizer.verified && (
@@ -86,38 +129,26 @@ export function OrganizerHeader({
               <SocialLinks links={organizer.socialLinks} />
             </div>
           )}
-        </div>
 
-        {/* Action Buttons */}
-        {!isOwnProfile && (
-          <div className="flex items-center gap-2 shrink-0">
-            <FollowButton
-              organizerId={organizer.id}
-              initialFollowing={isFollowing}
-              isAuthenticated={isAuthenticated}
+          {/* Trust / achievements */}
+          <div className="mt-4">
+            <OrganizerBadges
+              verified={organizer.verified}
+              stats={stats}
+              memberSince={memberSince}
             />
-            <PinOrganizerButton
-              organizerId={organizer.id}
-              initialPinned={isPinned}
-              isAuthenticated={isAuthenticated}
-            />
-            <ShareProfileButton slug={organizer.slug} />
           </div>
-        )}
+        </div>
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6">
         <StatCard label="Events" value={stats.eventsCount.toString()} />
         <StatCard label="Followers" value={stats.followersCount.toString()} />
-        <StatCard label="Participants" value={stats.totalParticipants.toString()} />
+        <StatCard label="Riders Led" value={stats.totalParticipants.toString()} />
         <StatCard
           label="Rating"
-          value={
-            stats.avgRating
-              ? `${stats.avgRating.toFixed(1)}`
-              : "N/A"
-          }
+          value={stats.avgRating ? `${stats.avgRating.toFixed(1)}` : "N/A"}
           icon={stats.avgRating ? <Star className="h-4 w-4 text-amber-500 fill-amber-500" /> : undefined}
           subtitle={stats.ratingCount > 0 ? `${stats.ratingCount} reviews` : undefined}
         />

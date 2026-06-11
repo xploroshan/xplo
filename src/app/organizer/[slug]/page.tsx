@@ -7,6 +7,7 @@ import { APP_NAME, APP_URL } from "@/lib/constants"
 import Link from "next/link"
 import { OrganizerHeader } from "@/components/organizer/organizer-header"
 import { OrganizerEventCard } from "@/components/organizer/organizer-event-card"
+import { TrackView } from "@/components/analytics/track-view"
 import { OrganizerPastEventCard } from "@/components/organizer/organizer-past-event-card"
 
 interface PageProps {
@@ -140,10 +141,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       url: `${APP_URL}/@${organizer.slug}`,
       type: "profile",
-      images: organizer.image ? [{ url: organizer.image }] : [],
+      // og:image is supplied by the co-located opengraph-image.tsx (dynamic share card)
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title,
       description,
     },
@@ -208,6 +209,7 @@ export default async function OrganizerProfilePage({ params, searchParams }: Pag
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <TrackView name="organizer_viewed" organizerId={organizer.id} />
       <OrganizerHeader
         organizer={{
           id: organizer.id,
@@ -220,6 +222,7 @@ export default async function OrganizerProfilePage({ params, searchParams }: Pag
           socialLinks: organizer.socialLinks as Record<string, string> | null,
         }}
         stats={organizer.stats}
+        memberSince={organizer.createdAt ? new Date(organizer.createdAt).getFullYear() : null}
         isFollowing={isFollowing}
         isPinned={isPinned}
         isAuthenticated={!!session?.user}
@@ -295,6 +298,9 @@ export default async function OrganizerProfilePage({ params, searchParams }: Pag
                   isRegistered={userRegistrations.includes(event.id)}
                   isAuthenticated={!!session?.user}
                   organizerSlug={organizer.slug!}
+                  organizerId={organizer.id}
+                  organizerName={organizer.name}
+                  isFollowing={isFollowing}
                 />
               ))}
         </div>

@@ -13,11 +13,13 @@ import {
   ChevronRight,
   Building2,
   Star,
+  TrendingUp,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const adminNav = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { label: "Loop Metrics", href: "/admin/metrics", icon: TrendingUp },
   { label: "Users", href: "/admin/users", icon: Users },
   { label: "Events", href: "/admin/events", icon: Calendar },
   { label: "Organizations", href: "/admin/organizations", icon: Building2 },
