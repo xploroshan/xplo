@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     }
 
     // Rate limit: 5 per hour
-    const { success } = rateLimit(`create-org:${session.user.id}`, 5, 60 * 60 * 1000)
+    const { success } = await rateLimit(`create-org:${session.user.id}`, 5, 60 * 60 * 1000)
     if (!success) {
       return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 })
     }

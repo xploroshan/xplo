@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     }
 
     // Rate limit: 5 requests per 15 minutes per user
-    const { success } = rateLimit(`change-pwd:${session.user.id}`, 5, 15 * 60 * 1000)
+    const { success } = await rateLimit(`change-pwd:${session.user.id}`, 5, 15 * 60 * 1000)
     if (!success) {
       return NextResponse.json(
         { error: "Too many requests. Please try again later." },

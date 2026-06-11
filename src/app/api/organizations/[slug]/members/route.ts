@@ -28,7 +28,6 @@ export async function GET(
             name: true,
             image: true,
             slug: true,
-            email: true,
           },
         },
       },

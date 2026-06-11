@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { success, remaining } = rateLimit(
+    const { success, remaining } = await rateLimit(
       `ai-chat:${session.user.id}`,
       20,
       60 * 1000

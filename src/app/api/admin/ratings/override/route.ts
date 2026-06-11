@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     }
 
     // Rate limit: 20 per hour
-    const { success } = rateLimit(`rating-override:${session.user.id}`, 20, 60 * 60 * 1000)
+    const { success } = await rateLimit(`rating-override:${session.user.id}`, 20, 60 * 60 * 1000)
     if (!success) {
       return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 })
     }

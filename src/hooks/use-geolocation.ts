@@ -51,6 +51,8 @@ export function useGeolocation() {
   }, [])
 
   useEffect(() => {
+    // Kick off the geolocation request once on mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     requestLocation()
   }, [requestLocation])
 

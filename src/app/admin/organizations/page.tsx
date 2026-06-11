@@ -39,6 +39,7 @@ export default function AdminOrganizationsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
     const params = new URLSearchParams()
     if (statusFilter !== "all") params.set("status", statusFilter)

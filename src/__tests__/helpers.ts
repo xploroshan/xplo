@@ -36,6 +36,7 @@ export async function measureTime<T>(fn: () => Promise<T>): Promise<{ result: T;
 }
 
 export function mockAuthSession(session: ReturnType<typeof createMockSession> | null) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { auth } = require("@/lib/auth")
   vi.mocked(auth).mockResolvedValue(session)
 }

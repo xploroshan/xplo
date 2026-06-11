@@ -6,33 +6,27 @@ import { usePathname } from "next/navigation"
 import { useSession } from "next-auth/react"
 import {
   Compass,
-  LayoutGrid,
-  MessageCircle,
   User,
   Bell,
   Pin,
   Plus,
-  Calendar,
   Building2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 
 const navItems = [
   { label: "Discover", href: "/events", icon: Compass },
   { label: "Organizations", href: "/organizations", icon: Building2 },
-  { label: "Feed", href: "/feed", icon: LayoutGrid },
-  { label: "Messages", href: "/messages", icon: MessageCircle },
   { label: "Profile", href: "/profile", icon: User },
 ]
 
 const mobileNavItems = [
   { label: "Discover", href: "/events", icon: Compass },
-  { label: "Feed", href: "/feed", icon: LayoutGrid },
+  { label: "Organizations", href: "/organizations", icon: Building2 },
   { label: "Create", href: "/events/create", icon: Plus, isCreate: true },
-  { label: "Messages", href: "/messages", icon: MessageCircle },
+  { label: "Alerts", href: "/notifications", icon: Bell },
   { label: "Profile", href: "/profile", icon: User },
 ]
 
@@ -109,11 +103,6 @@ export function AppSidebar() {
               >
                 <item.icon className="h-5 w-5" />
                 {item.label}
-                {item.label === "Messages" && (
-                  <Badge className="ml-auto bg-orange-500/20 text-orange-400 text-[10px] px-1.5 py-0 border-0">
-                    3
-                  </Badge>
-                )}
               </Link>
             )
           })}

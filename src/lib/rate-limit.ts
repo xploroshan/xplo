@@ -1,16 +1,32 @@
 /**
- * In-memory sliding window rate limiter.
- * No external dependencies — uses a Map with automatic cleanup.
+ * Rate limiter with a durable Upstash Redis backend (shared across all
+ * serverless instances) and an in-memory fallback for local dev / tests, or
+ * before the Upstash env vars are configured.
+ *
+ * Same call shape everywhere — note it is now async:
+ *   const { success } = await rateLimit(key, maxRequests, windowMs)
  */
+
+import { Redis } from "@upstash/redis"
 
 interface RateLimitEntry {
   count: number
   resetAt: number
 }
 
+// In-memory store — fallback only. On serverless this is per-instance and not
+// shared, which is exactly why Upstash is preferred in production.
 const store = new Map<string, RateLimitEntry>()
 
-// Cleanup expired entries every 5 minutes
+const redis =
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+    ? new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      })
+    : null
+
+// Cleanup expired in-memory entries every 5 minutes (dev fallback only).
 if (typeof setInterval !== "undefined") {
   setInterval(() => {
     const now = Date.now()
@@ -22,14 +38,7 @@ if (typeof setInterval !== "undefined") {
   }, 5 * 60 * 1000)
 }
 
-/**
- * Check if a request should be rate limited.
- * @param key - Unique identifier (e.g., IP address or user ID)
- * @param maxRequests - Maximum requests allowed in the window
- * @param windowMs - Time window in milliseconds
- * @returns { success: boolean; remaining: number }
- */
-export function rateLimit(
+function memoryRateLimit(
   key: string,
   maxRequests: number,
   windowMs: number
@@ -38,7 +47,6 @@ export function rateLimit(
   const entry = store.get(key)
 
   if (!entry || entry.resetAt <= now) {
-    // New window
     store.set(key, { count: 1, resetAt: now + windowMs })
     return { success: true, remaining: maxRequests - 1 }
   }
@@ -49,6 +57,39 @@ export function rateLimit(
 
   entry.count++
   return { success: true, remaining: maxRequests - entry.count }
+}
+
+/**
+ * Check if a request should be rate limited (fixed window).
+ * @param key - Unique identifier (e.g., IP address or user ID)
+ * @param maxRequests - Maximum requests allowed in the window
+ * @param windowMs - Time window in milliseconds
+ */
+export async function rateLimit(
+  key: string,
+  maxRequests: number,
+  windowMs: number
+): Promise<{ success: boolean; remaining: number }> {
+  if (!redis) {
+    return memoryRateLimit(key, maxRequests, windowMs)
+  }
+
+  try {
+    const redisKey = `rl:${key}`
+    const count = await redis.incr(redisKey)
+    // First hit in this window — set the expiry.
+    if (count === 1) {
+      await redis.pexpire(redisKey, windowMs)
+    }
+    return {
+      success: count <= maxRequests,
+      remaining: Math.max(0, maxRequests - count),
+    }
+  } catch (err) {
+    // Never hard-fail a request because Redis hiccupped — fall back to memory.
+    console.error("rate-limit redis error, using in-memory fallback:", err)
+    return memoryRateLimit(key, maxRequests, windowMs)
+  }
 }
 
 /**
@@ -63,7 +104,7 @@ export function getClientIp(request: Request): string {
 }
 
 /**
- * Reset rate limit store. Used in tests.
+ * Reset the in-memory rate limit store. Used in tests.
  */
 export function resetRateLimitStore(): void {
   store.clear()

@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { success, remaining } = rateLimit(
+    const { success, remaining } = await rateLimit(
       `ai-enhance:${session.user.id}`,
       10,
       60 * 60 * 1000

@@ -24,7 +24,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { success, remaining } = rateLimit(
+    const { success, remaining } = await rateLimit(
       `ai-accommodations:${session.user.id}`,
       20,
       60 * 60 * 1000
