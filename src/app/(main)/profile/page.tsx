@@ -64,7 +64,7 @@ export default async function ProfilePage() {
           <Avatar className="h-20 w-20 -mt-10 border-4 border-zinc-950 shadow-xl">
             {user.image ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.image} alt="" className="h-full w-full object-cover" />
+              <img src={user.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
             ) : (
               <AvatarFallback className="bg-gradient-to-br from-orange-500 to-amber-500 text-white text-2xl font-bold">
                 {initials}

@@ -32,7 +32,7 @@ export default async function DmPage({ params }: { params: Promise<{ id: string 
         <Avatar className="h-8 w-8">
           {other?.image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={other.image} alt="" className="h-full w-full object-cover" />
+            <img src={other.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
           ) : (
             <AvatarFallback className="bg-zinc-700 text-zinc-300 text-xs">{other?.name?.charAt(0).toUpperCase() ?? "?"}</AvatarFallback>
           )}

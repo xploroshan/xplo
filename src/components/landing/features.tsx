@@ -88,12 +88,12 @@ export function Features() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
-              className="group relative"
+              className="group relative h-full rounded-2xl p-px bg-gradient-to-br from-zinc-800/80 via-zinc-800/30 to-zinc-800/60 transition-all duration-500 hover:from-orange-500/50 hover:via-amber-500/20 hover:to-orange-500/30 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-orange-500/10"
             >
-              <div className="relative h-full rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-8 backdrop-blur-sm transition-all duration-300 hover:border-zinc-700 hover:bg-zinc-900/80 hover:shadow-2xl hover:shadow-orange-500/5">
+              <div className="relative h-full rounded-[calc(1rem-1px)] bg-zinc-950/90 p-8 backdrop-blur-sm transition-colors duration-300 group-hover:bg-zinc-900/90">
                 {/* Icon */}
                 <div
-                  className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} mb-6 shadow-lg`}
+                  className={`inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} mb-6 shadow-lg transition-transform duration-300 ease-out group-hover:scale-110 group-hover:-rotate-3`}
                 >
                   <feature.icon className="h-6 w-6 text-white" />
                 </div>
@@ -104,9 +104,6 @@ export function Features() {
                 <p className="text-zinc-400 leading-relaxed">
                   {feature.description}
                 </p>
-
-                {/* Hover glow */}
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-orange-500/0 to-amber-500/0 opacity-0 group-hover:opacity-5 transition-opacity duration-300" />
               </div>
             </motion.div>
           ))}

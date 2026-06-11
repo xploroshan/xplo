@@ -61,7 +61,7 @@ export function StoriesStrip({ groups }: { groups: StoryGroup[] }) {
               <Avatar className="h-14 w-14 border-2 border-zinc-950">
                 {g.user.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={g.user.image} alt="" className="h-full w-full object-cover" />
+                  <img src={g.user.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                 ) : (
                   <AvatarFallback className="bg-zinc-800 text-zinc-300">{g.user.name?.charAt(0) ?? "?"}</AvatarFallback>
                 )}
@@ -97,7 +97,7 @@ export function StoriesStrip({ groups }: { groups: StoryGroup[] }) {
             <Avatar className="h-8 w-8">
               {current.user.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={current.user.image} alt="" className="h-full w-full object-cover" />
+                <img src={current.user.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
               ) : (
                 <AvatarFallback className="bg-zinc-700 text-zinc-200 text-xs">{current.user.name?.charAt(0) ?? "?"}</AvatarFallback>
               )}

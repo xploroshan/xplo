@@ -163,7 +163,7 @@ function PersonRow({
       <Avatar className="h-9 w-9">
         {p.user.image ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={p.user.image} alt="" className="h-full w-full object-cover" />
+          <img src={p.user.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
         ) : (
           <AvatarFallback className="bg-orange-500/10 text-orange-500 text-xs font-bold">
             {initials}

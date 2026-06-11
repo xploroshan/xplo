@@ -318,7 +318,7 @@ export function EventChat({
                   <Avatar className="h-7 w-7 shrink-0">
                     {m.sender.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={m.sender.image} alt="" className="h-full w-full object-cover" />
+                      <img src={m.sender.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                     ) : (
                       <AvatarFallback className="bg-zinc-700 text-zinc-300 text-[10px]">{initials}</AvatarFallback>
                     )}

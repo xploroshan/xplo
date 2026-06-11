@@ -61,7 +61,7 @@ export function Testimonials() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: i * 0.1 }}
-              className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-6 relative"
+              className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-6 relative transition-all duration-300 hover:border-orange-500/20 hover:bg-zinc-900/80 hover:-translate-y-1 hover:shadow-xl hover:shadow-orange-500/5"
             >
               <Quote className="absolute top-4 right-4 h-8 w-8 text-orange-500/10" />
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { Calendar, MapPin, Users } from "lucide-react"
+import { MapPin, Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import type { MockEvent } from "@/lib/mock-data"
@@ -31,7 +31,10 @@ export function EventCard({ event, index = 0 }: { event: MockEvent; index?: numb
       transition={{ duration: 0.4, delay: index * 0.05 }}
     >
       <Link href={`/events/${event.slug}`} className="block group">
-        <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 overflow-hidden transition-all duration-300 hover:border-zinc-700 hover:shadow-lg hover:shadow-black/20 group-hover:-translate-y-1">
+        <div
+          className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 overflow-hidden transition-all duration-300 hover:border-zinc-700 group-hover:-translate-y-1 group-hover:shadow-[0_16px_40px_-16px_var(--event-glow)]"
+          style={{ "--event-glow": `${event.eventType.color}50` } as React.CSSProperties}
+        >
           {/* Cover Image / Gradient Fallback */}
           <div
             className="relative aspect-[16/10] overflow-hidden"
@@ -39,7 +42,7 @@ export function EventCard({ event, index = 0 }: { event: MockEvent; index?: numb
               background: `linear-gradient(135deg, ${event.eventType.color}15 0%, ${event.eventType.color}05 50%, transparent 100%)`,
             }}
           >
-            <div className="absolute inset-0 flex items-center justify-center opacity-10">
+            <div className="absolute inset-0 flex items-center justify-center opacity-10 transition-all duration-500 group-hover:opacity-20 group-hover:scale-110">
               <div
                 className="w-32 h-32 rounded-full blur-2xl"
                 style={{ backgroundColor: event.eventType.color }}

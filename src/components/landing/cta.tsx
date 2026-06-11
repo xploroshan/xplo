@@ -11,7 +11,7 @@ export function CTA() {
       <div className="absolute inset-0 bg-[#0a0a0a]" />
 
       {/* Glow effects */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-orange-500/10 rounded-full blur-[150px]" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-orange-500/10 rounded-full blur-[150px] animate-float will-change-transform" />
 
       <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <motion.div
@@ -30,9 +30,9 @@ export function CTA() {
             alone. Your next adventure is one tap away.
           </p>
           <Link href="/register">
-            <Button variant="glow" size="lg" className="text-lg px-10 h-14 rounded-2xl">
+            <Button variant="glow" size="lg" className="text-lg px-10 h-14 rounded-2xl group">
               Join HYKRZ Today
-              <ArrowRight className="ml-2 h-5 w-5" />
+              <ArrowRight className="ml-2 h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
             </Button>
           </Link>
           <p className="mt-4 text-sm text-zinc-500">

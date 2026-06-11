@@ -52,7 +52,7 @@ export function UserAdminRow({ user, canSuper }: { user: AdminUser; canSuper: bo
           <Avatar className="h-8 w-8">
             {u.image ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={u.image} alt="" className="h-full w-full object-cover" />
+              <img src={u.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
             ) : (
               <AvatarFallback className="bg-zinc-700 text-zinc-300 text-xs">{u.name?.charAt(0) ?? "?"}</AvatarFallback>
             )}
