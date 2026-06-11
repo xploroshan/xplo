@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { motion } from "framer-motion"
 import {
   Compass,
   LayoutGrid,
@@ -100,14 +101,21 @@ export function AppSidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+                  "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-orange-500/10 text-orange-500"
+                    ? "text-orange-500"
                     : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
                 )}
               >
-                <item.icon className="h-5 w-5" />
-                {item.label}
+                {isActive && (
+                  <motion.span
+                    layoutId="sidebar-active-pill"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                    className="absolute inset-0 rounded-xl bg-orange-500/10 border border-orange-500/15"
+                  />
+                )}
+                <item.icon className="relative h-5 w-5" />
+                <span className="relative">{item.label}</span>
               </Link>
             )
           })}
@@ -144,6 +152,8 @@ export function AppSidebar() {
                         <img
                           src={pin.organizer.image}
                           alt=""
+                          loading="lazy"
+                          decoding="async"
                           className="h-full w-full object-cover"
                         />
                       ) : (
@@ -166,28 +176,42 @@ export function AppSidebar() {
             <Link
               href="/admin"
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+                "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                 pathname.startsWith("/admin")
-                  ? "bg-orange-500/10 text-orange-500"
+                  ? "text-orange-500"
                   : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
               )}
             >
-              <Shield className="h-5 w-5" />
-              Admin
+              {pathname.startsWith("/admin") && (
+                <motion.span
+                  layoutId="sidebar-active-pill"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                  className="absolute inset-0 rounded-xl bg-orange-500/10 border border-orange-500/15"
+                />
+              )}
+              <Shield className="relative h-5 w-5" />
+              <span className="relative">Admin</span>
             </Link>
           )}
           <Link
             href="/notifications"
             className={cn(
-              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+              "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
               pathname === "/notifications"
-                ? "bg-orange-500/10 text-orange-500"
+                ? "text-orange-500"
                 : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
             )}
           >
-            <Bell className="h-5 w-5" />
-            Notifications
-            <span className="ml-auto w-2 h-2 rounded-full bg-orange-500" />
+            {pathname === "/notifications" && (
+              <motion.span
+                layoutId="sidebar-active-pill"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                className="absolute inset-0 rounded-xl bg-orange-500/10 border border-orange-500/15"
+              />
+            )}
+            <Bell className="relative h-5 w-5" />
+            <span className="relative">Notifications</span>
+            <span className="relative ml-auto w-2 h-2 rounded-full bg-orange-500" />
           </Link>
 
           {session?.user && (
@@ -195,7 +219,7 @@ export function AppSidebar() {
               <Avatar className="h-8 w-8 border border-zinc-700">
                 {session.user.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={session.user.image} alt="" className="h-full w-full object-cover" />
+                  <img src={session.user.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                 ) : (
                   <AvatarFallback className="bg-orange-500/10 text-orange-500 text-xs font-bold">
                     {initials}
@@ -228,7 +252,7 @@ export function AppSidebar() {
                   href={item.href}
                   className="flex items-center justify-center -mt-4"
                 >
-                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-amber-500 shadow-lg shadow-orange-500/30">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-amber-500 shadow-lg shadow-orange-500/30 transition-transform duration-200 active:scale-90">
                     <Plus className="h-6 w-6 text-white" />
                   </div>
                 </Link>
@@ -240,7 +264,7 @@ export function AppSidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all",
+                  "flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 active:scale-90",
                   isActive ? "text-orange-500" : "text-zinc-500"
                 )}
               >

@@ -32,6 +32,8 @@ export function OrganizerPastEventCard({ event }: PastEventCardProps) {
           <img
             src={event.coverImage}
             alt={event.title}
+            loading="lazy"
+            decoding="async"
             className="h-20 w-20 rounded-lg object-cover shrink-0"
           />
         ) : (

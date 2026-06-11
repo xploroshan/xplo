@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react"
 import { motion } from "framer-motion"
 import {
   Bed,
-  Loader2,
   Star,
   ExternalLink,
   AlertCircle,

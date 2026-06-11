@@ -96,7 +96,7 @@ export default async function MessagesPage() {
                     <Avatar className="h-10 w-10 shrink-0">
                       {d.other.image ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={d.other.image} alt="" className="h-full w-full object-cover" />
+                        <img src={d.other.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                       ) : (
                         <AvatarFallback className="bg-zinc-700 text-zinc-300 text-sm">{d.other.name?.charAt(0).toUpperCase() ?? "?"}</AvatarFallback>
                       )}

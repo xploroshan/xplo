@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { motion } from "framer-motion"
+import { AnimatePresence, motion } from "framer-motion"
 import { Menu, X, Compass } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
@@ -54,9 +54,10 @@ export function Header() {
               <Link
                 key={link.label}
                 href={link.href}
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
+                className="group relative text-sm text-zinc-400 hover:text-white transition-colors"
               >
                 {link.label}
+                <span className="absolute -bottom-1 left-0 h-px w-0 bg-gradient-to-r from-orange-500 to-amber-400 transition-all duration-300 group-hover:w-full" />
               </Link>
             ))}
           </div>
@@ -95,12 +96,13 @@ export function Header() {
         </div>
 
         {/* Mobile Menu */}
+        <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-zinc-800/50 py-4"
+            className="md:hidden border-t border-zinc-800/50 py-4 overflow-hidden"
           >
             <div className="flex flex-col gap-3">
               {navLinks.map((link) => (
@@ -138,6 +140,7 @@ export function Header() {
             </div>
           </motion.div>
         )}
+        </AnimatePresence>
       </nav>
     </motion.header>
   )

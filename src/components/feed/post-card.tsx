@@ -114,7 +114,7 @@ export function PostCard({ post, isAuthenticated }: { post: PresentedPost; isAut
         <Avatar className="h-10 w-10">
           {post.author.image ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={post.author.image} alt="" className="h-full w-full object-cover" />
+            <img src={post.author.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
           ) : (
             <AvatarFallback className="bg-orange-500/10 text-orange-500 font-bold">{initials}</AvatarFallback>
           )}
@@ -181,7 +181,7 @@ export function PostCard({ post, isAuthenticated }: { post: PresentedPost; isAut
                 <Avatar className="h-6 w-6 shrink-0">
                   {c.user.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={c.user.image} alt="" className="h-full w-full object-cover" />
+                    <img src={c.user.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                   ) : (
                     <AvatarFallback className="bg-zinc-700 text-zinc-300 text-[9px]">{c.user.name?.charAt(0) ?? "?"}</AvatarFallback>
                   )}

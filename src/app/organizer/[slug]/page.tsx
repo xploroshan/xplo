@@ -5,6 +5,7 @@ import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
 import { APP_NAME, APP_URL } from "@/lib/constants"
 import Link from "next/link"
+import Image from "next/image"
 import { OrganizerHeader } from "@/components/organizer/organizer-header"
 import { OrganizerEventCard } from "@/components/organizer/organizer-event-card"
 import { TrackView } from "@/components/analytics/track-view"
@@ -239,7 +240,7 @@ export default async function OrganizerProfilePage({ params, searchParams }: Pag
               className="inline-flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/50 px-3 py-2 text-sm hover:border-orange-500/30 transition-colors"
             >
               {org.logo ? (
-                <img src={org.logo} alt={org.name} className="h-5 w-5 rounded object-cover" />
+                <Image src={org.logo} alt={org.name} width={20} height={20} className="h-5 w-5 rounded object-cover" />
               ) : (
                 <div className="h-5 w-5 rounded bg-orange-500/20 flex items-center justify-center text-[10px] text-orange-500 font-bold">
                   {org.name.charAt(0)}

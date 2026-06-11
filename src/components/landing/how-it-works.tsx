@@ -60,14 +60,20 @@ export function HowItWorks() {
               transition={{ delay: index * 0.2 }}
               className="relative text-center"
             >
-              {/* Connecting line */}
+              {/* Connecting line — draws itself in as it scrolls into view */}
               {index < steps.length - 1 && (
-                <div className="hidden md:block absolute top-12 left-[60%] w-[80%] h-px bg-gradient-to-r from-orange-500/50 to-transparent" />
+                <motion.div
+                  initial={{ scaleX: 0 }}
+                  whileInView={{ scaleX: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.4 + index * 0.2, duration: 0.8, ease: "easeOut" }}
+                  className="hidden md:block absolute top-12 left-[60%] w-[80%] h-px bg-gradient-to-r from-orange-500/50 to-transparent origin-left"
+                />
               )}
 
               {/* Step number */}
-              <div className="relative inline-flex items-center justify-center w-24 h-24 rounded-full border-2 border-orange-500/30 bg-orange-500/5 mb-6">
-                <item.icon className="h-10 w-10 text-orange-500" />
+              <div className="group relative inline-flex items-center justify-center w-24 h-24 rounded-full border-2 border-orange-500/30 bg-orange-500/5 mb-6 transition-all duration-300 hover:border-orange-500/60 hover:bg-orange-500/10 hover:shadow-[0_0_40px_-8px] hover:shadow-orange-500/50">
+                <item.icon className="h-10 w-10 text-orange-500 transition-transform duration-300 group-hover:scale-110" />
                 <span className="absolute -top-2 -right-2 flex h-8 w-8 items-center justify-center rounded-full bg-orange-500 text-sm font-bold text-white shadow-lg shadow-orange-500/30">
                   {item.step}
                 </span>

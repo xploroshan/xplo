@@ -48,7 +48,7 @@ export function AppTopBar() {
             <Avatar className="h-8 w-8 border border-zinc-700">
               {session?.user?.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={session.user.image} alt="" className="h-full w-full object-cover" />
+                <img src={session.user.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
               ) : (
                 <AvatarFallback className="bg-orange-500/10 text-orange-500 text-xs font-bold">
                   {initials}
