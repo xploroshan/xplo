@@ -29,9 +29,22 @@ export async function GET(request: Request) {
       where: { isStory: true, isHighlight: false, expiresAt: { lt: now } },
     })
 
+    // Archive event group chats 48h after the event completed (FR-3.3): the
+    // chat becomes read-only.
+    const archiveCutoff = new Date(now.getTime() - 48 * 60 * 60 * 1000)
+    const archived = await db.event.updateMany({
+      where: {
+        status: "COMPLETED",
+        chatActive: true,
+        startDate: { lt: archiveCutoff },
+      },
+      data: { chatActive: false, chatArchivedAt: now },
+    })
+
     return NextResponse.json({
       ok: true,
       deleted: { resetTokens: tokens.count, stories: stories.count },
+      archivedChats: archived.count,
     })
   } catch (error) {
     console.error("Cron cleanup error:", error)
