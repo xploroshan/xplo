@@ -106,3 +106,44 @@ export function passwordResetEmail(resetUrl: string): { subject: string; html: s
     text: `Reset your HYKRZ password (link expires in 1 hour):\n${resetUrl}\n\nIf you didn't request this, ignore this email.`,
   }
 }
+
+const STATUS_COPY: Record<string, string> = {
+  CONFIRMED: "You're confirmed — see you there!",
+  WAITLISTED: "The event is full, so you're on the waitlist. We'll email you if a spot opens up.",
+  PENDING: "Your request has been sent to the organizer for approval.",
+}
+
+export function rsvpConfirmationEmail(args: {
+  eventTitle: string
+  eventUrl: string
+  whenText: string
+  status: string
+}): { subject: string; html: string; text: string } {
+  const status = STATUS_COPY[args.status] ?? "You're registered."
+  return {
+    subject: `You're registered: ${args.eventTitle}`,
+    html: layout(
+      args.eventTitle,
+      `${status}<br/><br/><strong>When:</strong> ${args.whenText}<br/><br/>A calendar invite is attached.`,
+      { label: "View event", url: args.eventUrl }
+    ),
+    text: `${args.eventTitle}\n${status}\nWhen: ${args.whenText}\n${args.eventUrl}`,
+  }
+}
+
+export function eventAnnouncementEmail(args: {
+  eventTitle: string
+  eventUrl: string
+  message: string
+  organizerName: string
+}): { subject: string; html: string; text: string } {
+  return {
+    subject: `Update: ${args.eventTitle}`,
+    html: layout(
+      `Update from ${args.organizerName}`,
+      `${args.message.replace(/\n/g, "<br/>")}<br/><br/><em>Re: ${args.eventTitle}</em>`,
+      { label: "View event", url: args.eventUrl }
+    ),
+    text: `Update from ${args.organizerName} re: ${args.eventTitle}\n\n${args.message}\n\n${args.eventUrl}`,
+  }
+}

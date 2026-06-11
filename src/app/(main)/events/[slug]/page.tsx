@@ -327,9 +327,9 @@ export default async function EventDetailPage({ params }: PageProps) {
               )}
 
               {isOrganizer ? (
-                <Link href={`/@${event.organizer.slug}`}>
-                  <Button variant="outline" className="w-full rounded-xl border-zinc-700">
-                    You&apos;re the organizer
+                <Link href={`/events/${event.slug}/manage`}>
+                  <Button variant="glow" className="w-full rounded-xl">
+                    Manage event
                   </Button>
                 </Link>
               ) : REGISTERABLE.includes(event.status) ? (
