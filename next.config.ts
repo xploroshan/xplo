@@ -29,11 +29,14 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline'",
+              // Razorpay Checkout loads an external script + iframe.
+              "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https:",
+              // https: + wss: covers Ably realtime (wss) and Razorpay APIs.
+              "connect-src 'self' https: wss:",
+              "frame-src https://api.razorpay.com https://checkout.razorpay.com",
               "frame-ancestors 'none'",
               "object-src 'none'",
               "base-uri 'self'",
