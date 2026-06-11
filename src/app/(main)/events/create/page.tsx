@@ -99,6 +99,12 @@ export default function CreateEventPage() {
           coverImage: coverImage ?? undefined,
           requiresApproval: fd.get("requiresApproval") === "on",
           organizationId: selectedOrgId ?? undefined,
+          assemblyPointAddress: str("assemblyPoint"),
+          assemblyPointTime: str("assemblyTime"),
+          checklist: ((fd.get("checklist") as string) || "")
+            .split("\n")
+            .map((l) => l.trim())
+            .filter(Boolean),
         }),
       })
       const data = await res.json().catch(() => null)
@@ -319,6 +325,45 @@ export default function CreateEventPage() {
             <p className="text-xs text-zinc-500 mt-2">
               Events with a photo get noticeably more registrations.
             </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-zinc-800 bg-zinc-900/50">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-orange-500" /> Assembly &amp; Checklist
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-300">Assembly point</label>
+                <Input
+                  name="assemblyPoint"
+                  placeholder="e.g. Indiranagar HP petrol pump"
+                  className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus-visible:ring-orange-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-300">Assembly time</label>
+                <Input
+                  name="assemblyTime"
+                  placeholder="e.g. 5:45 AM sharp"
+                  className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus-visible:ring-orange-500"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-300">
+                Pre-ride checklist <span className="text-zinc-500">(one item per line)</span>
+              </label>
+              <textarea
+                name="checklist"
+                rows={4}
+                placeholder={"Full tank of fuel\nValid licence & RC\nHelmet & riding gear\nRain jacket"}
+                className="w-full rounded-xl bg-zinc-800/50 border border-zinc-700 text-sm text-white placeholder:text-zinc-500 px-3 py-2 outline-none focus:ring-2 focus:ring-orange-500/40"
+              />
+            </div>
           </CardContent>
         </Card>
 

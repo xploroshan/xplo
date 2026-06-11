@@ -64,6 +64,7 @@ model User {
   following         Follow[]         @relation("UserFollowing")
   orgMemberships    OrganizationMember[]
   adminOverrides    RatingOverrideLog[] @relation("AdminOverrides")
+  eventReminders    EventReminder[]
 
   @@index([email])
   @@index([city])
@@ -208,6 +209,7 @@ model Event {
   participants EventParticipant[]
   messages     Message[]
   posts        Post[]
+  reminders    EventReminder[]
 
   @@index([status, startDate])
   @@index([eventTypeId])
@@ -449,6 +451,25 @@ model Follow {
 
   @@unique([followerId, followingId])
   @@index([followingId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 12b: EventReminder
+// Purpose: "Remind me" — notify-on-open for events that aren't joinable yet
+//          (closed / not on sale). Cleared once the reminder fires.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model EventReminder {
+  id        String   @id @default(cuid())
+  userId    String
+  eventId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+  @@index([eventId])
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

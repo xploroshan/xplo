@@ -38,10 +38,15 @@ export default async function ManageEventPage({ params }: PageProps) {
       coverImage: true,
       startLocation: true,
       destination: true,
+      assemblyPoint: true,
+      checklist: true,
       organizerId: true,
     },
   })
   if (!event) notFound()
+
+  const assembly = (event.assemblyPoint as { address?: string; time?: string } | null) ?? {}
+  const checklist = Array.isArray(event.checklist) ? (event.checklist as string[]) : []
 
   const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN"
   // 404 (not 403) for non-organizers so the page's existence isn't leaked.
@@ -85,6 +90,9 @@ export default async function ManageEventPage({ params }: PageProps) {
           coverImage: event.coverImage,
           startLocationAddress: addressOf(event.startLocation),
           destinationAddress: addressOf(event.destination),
+          assemblyPointAddress: assembly.address ?? "",
+          assemblyPointTime: assembly.time ?? "",
+          checklist,
         }}
         initialParticipants={participants.map((p) => ({
           id: p.id,

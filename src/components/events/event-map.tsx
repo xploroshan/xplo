@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import "leaflet/dist/leaflet.css"
+import { geocode } from "@/lib/geocode"
 
 interface EventMapProps {
   startAddress?: string | null
@@ -13,35 +14,6 @@ interface Point {
   lat: number
   lng: number
   label: string
-}
-
-// Geocode an address via Nominatim (OpenStreetMap), cached in sessionStorage
-// so repeat views don't re-hit the API (their usage policy asks for restraint).
-async function geocode(address: string): Promise<{ lat: number; lng: number } | null> {
-  const key = `geo:${address}`
-  try {
-    const cached = sessionStorage.getItem(key)
-    if (cached) return JSON.parse(cached)
-  } catch {
-    // sessionStorage unavailable — fall through to fetch
-  }
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address)}`,
-      { headers: { Accept: "application/json" } }
-    )
-    const data = await res.json()
-    if (!Array.isArray(data) || !data[0]) return null
-    const point = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
-    try {
-      sessionStorage.setItem(key, JSON.stringify(point))
-    } catch {
-      // best-effort cache
-    }
-    return point
-  } catch {
-    return null
-  }
 }
 
 export function EventMap({ startAddress, destinationAddress, className }: EventMapProps) {

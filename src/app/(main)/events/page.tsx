@@ -1,17 +1,37 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { MapPin, Compass, SlidersHorizontal, Search } from "lucide-react"
+import { MapPin, Compass, SlidersHorizontal, Search, List, Map as MapIcon, CalendarDays } from "lucide-react"
 import type { EventStatus } from "@prisma/client"
 import { db } from "@/lib/db"
+import { auth } from "@/lib/auth"
 import { APP_NAME, APP_URL } from "@/lib/constants"
 import { EventCard } from "@/components/events/event-card"
 import { PopularOrganizers } from "@/components/events/popular-organizers"
+import { EventsMapView, type MapEvent } from "@/components/events/events-map-view"
+import { EventCalendar, type CalendarEvent } from "@/components/events/event-calendar"
+import { CityAutoDetect } from "@/components/events/city-auto-detect"
 import type { MockEvent, MockOrganizer } from "@/lib/mock-data"
 
 const ACTIVE: EventStatus[] = ["PUBLISHED", "OPEN", "ACTIVE"]
 
+// Quick-filter chip styling.
+function chip(active: boolean): string {
+  return `px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+    active
+      ? "bg-orange-500/15 text-orange-400 border-orange-500/30"
+      : "bg-zinc-900/50 text-zinc-400 border-zinc-800 hover:text-white hover:border-zinc-700"
+  }`
+}
+
 interface PageProps {
-  searchParams: Promise<{ city?: string; type?: string; q?: string }>
+  searchParams: Promise<{
+    city?: string
+    type?: string
+    q?: string
+    view?: string
+    price?: string
+    avail?: string
+  }>
 }
 
 type DbEvent = Awaited<ReturnType<typeof getEvents>>[number]
@@ -110,14 +130,26 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
 }
 
 export default async function EventsPage({ searchParams }: PageProps) {
-  const { city, type, q } = await searchParams
+  const { city, type, q, view, price, avail } = await searchParams
 
-  const where: Record<string, unknown> = { status: { in: ACTIVE } }
+  const and: object[] = []
+  const where: Record<string, unknown> = { status: { in: ACTIVE }, AND: and }
   if (type) where.eventType = { slug: type }
   if (city) where.organizer = { city: { equals: city, mode: "insensitive" } }
-  if (q) where.title = { contains: q, mode: "insensitive" }
+  // Search across title + description (case-insensitive).
+  if (q) {
+    and.push({
+      OR: [
+        { title: { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
+      ],
+    })
+  }
+  // Price filter: free = null/0, paid = > 0.
+  if (price === "free") and.push({ OR: [{ price: null }, { price: 0 }] })
+  else if (price === "paid") and.push({ price: { gt: 0 } })
 
-  const hasFilters = Boolean(city || type || q)
+  const hasFilters = Boolean(city || type || q || price || avail)
 
   const [events, types, cityRows, topOrganizers, featuredRaw] = await Promise.all([
     getEvents(where),
@@ -141,8 +173,59 @@ export default async function EventsPage({ searchParams }: PageProps) {
       : getEvents({ status: { in: ACTIVE }, featured: true }),
   ])
 
-  const cardEvents = events.map(toCardEvent)
+  const allCardEvents = events.map(toCardEvent)
+  // Availability filter (open = has spots left). Done post-query since it needs
+  // the confirmed count vs capacity.
+  const cardEvents =
+    avail === "open"
+      ? allCardEvents.filter((e) => !e.capacity || e.registeredCount < e.capacity)
+      : allCardEvents
   const featured = (featuredRaw as DbEvent[]).map(toCardEvent).slice(0, 4)
+
+  // Map view data.
+  const mapEvents: MapEvent[] =
+    view === "map"
+      ? cardEvents
+          .filter((e) => e.destination.address && e.destination.address !== "Location TBD")
+          .map((e) => ({
+            slug: e.slug,
+            title: e.title,
+            address: e.destination.address,
+            dateText: new Date(e.startDate).toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+            typeColor: e.eventType.color,
+          }))
+      : []
+
+  // Calendar view data (the signed-in user's events).
+  let calendarEvents: CalendarEvent[] = []
+  if (view === "calendar") {
+    const session = await auth()
+    if (session?.user?.id) {
+      const [parts, organized] = await Promise.all([
+        db.eventParticipant.findMany({
+          where: { userId: session.user.id, status: { not: "CANCELLED" } },
+          select: { event: { select: { slug: true, title: true, startDate: true, eventType: { select: { color: true } } } } },
+        }),
+        db.event.findMany({
+          where: { organizerId: session.user.id },
+          select: { slug: true, title: true, startDate: true, eventType: { select: { color: true } } },
+        }),
+      ])
+      const seen = new Set<string>()
+      calendarEvents = [
+        ...parts.map((p) => ({ ...p.event, role: "going" as const })),
+        ...organized.map((e) => ({ ...e, role: "organizing" as const })),
+      ]
+        .filter((e) => (seen.has(e.slug) ? false : (seen.add(e.slug), true)))
+        .map((e) => ({
+          slug: e.slug,
+          title: e.title,
+          date: new Date(e.startDate).toISOString(),
+          color: e.eventType?.color,
+          role: e.role,
+        }))
+    }
+  }
 
   const popularOrganizers: MockOrganizer[] = topOrganizers.map((o) => ({
     id: o.id,
@@ -158,15 +241,24 @@ export default async function EventsPage({ searchParams }: PageProps) {
   }))
 
   // Build a query string preserving the other active filters.
-  const href = (patch: Partial<{ city: string; type: string; q: string }>) => {
-    const next = { city, type, q, ...patch }
+  const href = (patch: Partial<{ city: string; type: string; q: string; view: string; price: string; avail: string }>) => {
+    const next = { city, type, q, view, price, avail, ...patch }
     const qs = new URLSearchParams()
     if (next.city) qs.set("city", next.city)
     if (next.type) qs.set("type", next.type)
     if (next.q) qs.set("q", next.q)
+    if (next.view) qs.set("view", next.view)
+    if (next.price) qs.set("price", next.price)
+    if (next.avail) qs.set("avail", next.avail)
     const s = qs.toString()
     return s ? `/events?${s}` : "/events"
   }
+
+  const viewModes = [
+    { key: undefined as string | undefined, label: "List", icon: List },
+    { key: "map", label: "Map", icon: MapIcon },
+    { key: "calendar", label: "Calendar", icon: CalendarDays },
+  ]
 
   // SEO: ItemList of the events on this page.
   const jsonLd = {
@@ -195,8 +287,12 @@ export default async function EventsPage({ searchParams }: PageProps) {
         </p>
       </div>
 
+      {/* City auto-detect suggestion (only when no city is chosen) */}
+      {!city && <CityAutoDetect />}
+
       {/* Search */}
       <form action="/events" method="get" className="flex items-center gap-2 max-w-xl mx-auto">
+        {view && <input type="hidden" name="view" value={view} />}
         {city && <input type="hidden" name="city" value={city} />}
         {type && <input type="hidden" name="type" value={type} />}
         <div className="relative flex-1">
@@ -256,8 +352,47 @@ export default async function EventsPage({ searchParams }: PageProps) {
         </div>
       )}
 
+      {/* View toggle + quick filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="inline-flex rounded-xl border border-zinc-800 bg-zinc-900/50 p-0.5">
+          {viewModes.map((v) => {
+            const active = (view ?? undefined) === v.key
+            return (
+              <Link
+                key={v.label}
+                href={href({ view: v.key })}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  active ? "bg-orange-500/15 text-orange-400" : "text-zinc-400 hover:text-white"
+                }`}
+              >
+                <v.icon className="h-3.5 w-3.5" />
+                {v.label}
+              </Link>
+            )
+          })}
+        </div>
+
+        {view !== "calendar" && (
+          <div className="flex flex-wrap items-center gap-1.5 ml-auto">
+            <Link href={href({ price: price === "free" ? undefined : "free" })} className={chip(price === "free")}>Free</Link>
+            <Link href={href({ price: price === "paid" ? undefined : "paid" })} className={chip(price === "paid")}>Paid</Link>
+            <Link href={href({ avail: avail === "open" ? undefined : "open" })} className={chip(avail === "open")}>Has spots</Link>
+          </div>
+        )}
+      </div>
+
       <div className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 min-w-0 space-y-8">
+          {view === "map" ? (
+            cardEvents.length > 0 ? (
+              <EventsMapView events={mapEvents} />
+            ) : (
+              <p className="text-center text-sm text-zinc-500 py-16">No events to map.</p>
+            )
+          ) : view === "calendar" ? (
+            <EventCalendar events={calendarEvents} />
+          ) : (
+            <>
           {/* Featured (discovery mode only) */}
           {!hasFilters && featured.length > 0 && (
             <section>
@@ -302,6 +437,8 @@ export default async function EventsPage({ searchParams }: PageProps) {
               </div>
             )}
           </section>
+            </>
+          )}
         </div>
 
         {/* Sidebar */}

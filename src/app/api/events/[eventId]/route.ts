@@ -25,6 +25,9 @@ const patchBody = z.object({
   coverImage: z.string().url().nullable().optional(),
   startLocationAddress: z.string().nullable().optional(),
   destinationAddress: z.string().nullable().optional(),
+  assemblyPointAddress: z.string().nullable().optional(),
+  assemblyPointTime: z.string().nullable().optional(),
+  checklist: z.array(z.string().min(1).max(120)).max(30).nullable().optional(),
 })
 
 export async function PATCH(
@@ -39,7 +42,7 @@ export async function PATCH(
 
   const event = await db.event.findUnique({
     where: { id: eventId },
-    select: { id: true, slug: true, title: true, organizerId: true, startDate: true },
+    select: { id: true, slug: true, title: true, organizerId: true, startDate: true, status: true },
   })
   if (!event) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 })
@@ -71,12 +74,42 @@ export async function PATCH(
   if (d.destinationAddress !== undefined) {
     data.destination = d.destinationAddress ? { address: d.destinationAddress } : undefined
   }
+  if (d.assemblyPointAddress !== undefined || d.assemblyPointTime !== undefined) {
+    data.assemblyPoint =
+      d.assemblyPointAddress || d.assemblyPointTime
+        ? { address: d.assemblyPointAddress ?? undefined, time: d.assemblyPointTime ?? undefined }
+        : undefined
+  }
+  if (d.checklist !== undefined) {
+    data.checklist = d.checklist && d.checklist.length > 0 ? d.checklist : undefined
+  }
 
   const updated = await db.event.update({
     where: { id: event.id },
     data,
     select: { id: true, slug: true },
   })
+
+  // When the event (re)opens, fire any "remind me" reminders, then clear them.
+  if (d.status === "OPEN" && event.status !== "OPEN") {
+    const reminders = await db.eventReminder.findMany({
+      where: { eventId: event.id },
+      select: { userId: true },
+    })
+    if (reminders.length > 0) {
+      await db.notification.createMany({
+        data: reminders.map((r) => ({
+          type: "EVENT_REMINDER" as const,
+          title: "Registration is open!",
+          content: `"${d.title ?? event.title}" is now open for registration — grab a spot`,
+          link: `/events/${updated.slug}`,
+          userId: r.userId,
+          senderId: session.user!.id,
+        })),
+      })
+      await db.eventReminder.deleteMany({ where: { eventId: event.id } })
+    }
+  }
 
   // If the date moved, let confirmed participants know (FR-2.17).
   const dateChanged =
