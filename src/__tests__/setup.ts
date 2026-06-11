@@ -80,6 +80,16 @@ vi.mock("@/lib/db", () => ({
       update: vi.fn(),
       count: vi.fn(),
     },
+    chatRead: {
+      findMany: vi.fn(),
+      upsert: vi.fn(),
+    },
+    conversation: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      upsert: vi.fn(),
+      update: vi.fn(),
+    },
     eventParticipant: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),

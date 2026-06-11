@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { FollowButton } from "./follow-button"
 import { PinOrganizerButton } from "./pin-organizer-button"
 import { ShareProfileButton } from "./share-profile-button"
+import { MessageUserButton } from "@/components/messages/message-user-button"
 import { SocialLinks } from "./social-links"
 import { OrganizerBadges } from "./organizer-badges"
 
@@ -95,6 +96,9 @@ export function OrganizerHeader({
                 initialFollowing={isFollowing}
                 isAuthenticated={isAuthenticated}
               />
+              {isAuthenticated && (
+                <MessageUserButton userId={organizer.id} className="rounded-xl border-zinc-700 gap-2 h-9 px-3 text-sm" />
+              )}
               <PinOrganizerButton
                 organizerId={organizer.id}
                 initialPinned={isPinned}

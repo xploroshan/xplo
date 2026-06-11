@@ -67,6 +67,9 @@ model User {
   adminOverrides    RatingOverrideLog[] @relation("AdminOverrides")
   eventReminders    EventReminder[]
   emailVerificationTokens EmailVerificationToken[]
+  chatReads         ChatRead[]
+  conversationsA    Conversation[]    @relation("ConvA")
+  conversationsB    Conversation[]    @relation("ConvB")
 
   @@index([email])
   @@index([city])
@@ -489,6 +492,44 @@ model EmailVerificationToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 12d: ChatRead
+// Purpose: Per-user last-read marker for an event group chat → unread counts.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model ChatRead {
+  id         String   @id @default(cuid())
+  userId     String
+  eventId    String
+  lastReadAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+  @@index([eventId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 12e: Conversation
+// Purpose: 1:1 direct-message thread between two users (FR-5.23). Messages link
+//          via Message.conversationId = Conversation.id.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model Conversation {
+  id            String   @id @default(cuid())
+  userAId       String
+  userBId       String
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  userA User @relation("ConvA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB User @relation("ConvB", fields: [userBId], references: [id], onDelete: Cascade)
+
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
