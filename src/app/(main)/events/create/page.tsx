@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AiEnhanceButton } from "@/components/events/ai-enhance-button"
 import { AiSuggestionsPanel } from "@/components/events/ai-suggestions-panel"
 import { OrgSelector } from "@/components/organizations/org-selector"
+import { ImageUpload } from "@/components/image-upload"
 import Link from "next/link"
 import { DEFAULT_EVENT_TYPES } from "@/lib/constants"
 import { track } from "@/lib/analytics-client"
@@ -43,6 +44,7 @@ export default function CreateEventPage() {
   const [published, setPublished] = useState<Published | null>(null)
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
   const [userOrgs, setUserOrgs] = useState<UserOrg[]>([])
+  const [coverImage, setCoverImage] = useState<string | null>(null)
   const [aiSuggestions, setAiSuggestions] = useState<Array<{ key: string; label: string; value: string | string[] }> | null>(null)
 
   useEffect(() => {
@@ -94,6 +96,9 @@ export default function CreateEventPage() {
           destinationAddress: str("destination"),
           capacity: num("capacity"),
           price: num("price"),
+          coverImage: coverImage ?? undefined,
+          requiresApproval: fd.get("requiresApproval") === "on",
+          organizationId: selectedOrgId ?? undefined,
         }),
       })
       const data = await res.json().catch(() => null)
@@ -289,6 +294,31 @@ export default function CreateEventPage() {
                 />
               </div>
             </div>
+            <label className="flex items-center gap-2 text-sm text-zinc-300 pt-1">
+              <input
+                type="checkbox"
+                name="requiresApproval"
+                className="rounded border-zinc-700 bg-zinc-900"
+              />
+              Require my approval before riders can join
+            </label>
+          </CardContent>
+        </Card>
+
+        <Card className="border-zinc-800 bg-zinc-900/50">
+          <CardHeader>
+            <CardTitle className="text-white">Cover Image</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ImageUpload
+              value={coverImage}
+              onChange={setCoverImage}
+              className="h-44"
+              label="Upload a cover photo (optional)"
+            />
+            <p className="text-xs text-zinc-500 mt-2">
+              Events with a photo get noticeably more registrations.
+            </p>
           </CardContent>
         </Card>
 

@@ -18,6 +18,9 @@ const createEventBody = z.object({
   destinationAddress: z.string().optional(),
   capacity: z.number().int().positive().optional(),
   price: z.number().nonnegative().optional(),
+  coverImage: z.string().url().optional(),
+  requiresApproval: z.boolean().optional(),
+  organizationId: z.string().optional(),
 })
 
 async function uniqueSlug(base: string): Promise<string> {
@@ -72,6 +75,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
+    // Publishing under an organization requires membership in it.
+    if (data.organizationId) {
+      const membership = await db.organizationMember.findUnique({
+        where: {
+          userId_organizationId: {
+            userId: session.user.id,
+            organizationId: data.organizationId,
+          },
+        },
+        select: { id: true },
+      })
+      if (!membership) {
+        return NextResponse.json(
+          { error: "You are not a member of that organization" },
+          { status: 403 }
+        )
+      }
+    }
+
     let organizerSlug = me.slug
     if (!organizerSlug) {
       organizerSlug = await uniqueUserSlug(me.name || "organizer")
@@ -105,6 +127,9 @@ export async function POST(request: Request) {
           : undefined,
         capacity: data.capacity,
         price: data.price,
+        coverImage: data.coverImage,
+        requiresApproval: data.requiresApproval ?? false,
+        organizationId: data.organizationId,
         // Publish straight to OPEN so it's immediately shareable and joinable.
         status: "OPEN",
       },
