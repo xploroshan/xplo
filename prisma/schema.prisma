@@ -70,6 +70,7 @@ model User {
   chatReads         ChatRead[]
   conversationsA    Conversation[]    @relation("ConvA")
   conversationsB    Conversation[]    @relation("ConvB")
+  locationPings     LocationPing[]
 
   @@index([email])
   @@index([city])
@@ -215,6 +216,7 @@ model Event {
   messages     Message[]
   posts        Post[]
   reminders    EventReminder[]
+  locationPings LocationPing[]
 
   @@index([status, startDate])
   @@index([eventTypeId])
@@ -530,6 +532,29 @@ model Conversation {
   @@unique([userAId, userBId])
   @@index([userAId])
   @@index([userBId])
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TABLE 12f: LocationPing
+// Purpose: GPS samples during an ACTIVE event (FR-4). Powers the live group map
+//          (Pilot green / Sweep red trails) and the post-ride route summary.
+//          Old pings are purged by the cleanup cron.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model LocationPing {
+  id         String   @id @default(cuid())
+  eventId    String
+  userId     String
+  lat        Float
+  lng        Float
+  speedKmh   Float?
+  recordedAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, userId, recordedAt])
+  @@index([recordedAt])
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

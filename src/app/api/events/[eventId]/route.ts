@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { z } from "zod/v4"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { summarizeTrail } from "@/lib/geo"
 
 const EVENT_STATUSES = [
   "DRAFT",
@@ -89,6 +90,48 @@ export async function PATCH(
     data,
     select: { id: true, slug: true },
   })
+
+  // Ride finished → compute the route summary from the best GPS trail
+  // (FR-4.23). Pilot's trail preferred; falls back to the longest one.
+  if (d.status === "COMPLETED" && event.status !== "COMPLETED") {
+    const pilot = await db.eventParticipant.findFirst({
+      where: { eventId: event.id, role: "PILOT", status: "CONFIRMED" },
+      select: { userId: true },
+    })
+    let trail = pilot
+      ? await db.locationPing.findMany({
+          where: { eventId: event.id, userId: pilot.userId },
+          orderBy: { recordedAt: "asc" },
+          take: 2000,
+          select: { lat: true, lng: true, recordedAt: true },
+        })
+      : []
+    if (trail.length < 2) {
+      // No pilot trail — use whoever logged the most pings.
+      const counts = await db.locationPing.groupBy({
+        by: ["userId"],
+        where: { eventId: event.id },
+        _count: { _all: true },
+        orderBy: { _count: { userId: "desc" } },
+        take: 1,
+      })
+      if (counts[0]) {
+        trail = await db.locationPing.findMany({
+          where: { eventId: event.id, userId: counts[0].userId },
+          orderBy: { recordedAt: "asc" },
+          take: 2000,
+          select: { lat: true, lng: true, recordedAt: true },
+        })
+      }
+    }
+    const summary = summarizeTrail(trail)
+    if (summary) {
+      await db.event.update({
+        where: { id: event.id },
+        data: { routeSummary: summary as object },
+      })
+    }
+  }
 
   // When the event (re)opens, fire any "remind me" reminders, then clear them.
   if (d.status === "OPEN" && event.status !== "OPEN") {

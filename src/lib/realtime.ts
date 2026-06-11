@@ -16,6 +16,28 @@ function client(): Ably.Rest | null {
 
 export const eventChatChannel = (eventId: string) => `event:${eventId}:chat`
 export const conversationChannel = (id: string) => `conversation:${id}`
+export const eventTrackChannel = (eventId: string) => `event:${eventId}:track`
+
+export interface LivePosition {
+  userId: string
+  name: string | null
+  role: string
+  lat: number
+  lng: number
+  speedKmh?: number | null
+  at: string
+}
+
+/** Publish a rider's live position (full payload — watchers update markers directly). */
+export async function publishLocation(eventId: string, pos: LivePosition): Promise<void> {
+  const c = client()
+  if (!c) return
+  try {
+    await c.channels.get(eventTrackChannel(eventId)).publish("loc", pos)
+  } catch (err) {
+    console.error("ably location publish failed:", err)
+  }
+}
 
 /**
  * Publish a lightweight "something changed" poke to a channel. Clients react by

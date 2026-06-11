@@ -41,9 +41,15 @@ export async function GET(request: Request) {
       data: { chatActive: false, chatArchivedAt: now },
     })
 
+    // GPS pings older than 30 days — the route summary is already computed and
+    // stored on the event, so raw samples don't need to live forever.
+    const pings = await db.locationPing.deleteMany({
+      where: { recordedAt: { lt: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) } },
+    })
+
     return NextResponse.json({
       ok: true,
-      deleted: { resetTokens: tokens.count, stories: stories.count },
+      deleted: { resetTokens: tokens.count, stories: stories.count, locationPings: pings.count },
       archivedChats: archived.count,
     })
   } catch (error) {

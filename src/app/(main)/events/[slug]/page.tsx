@@ -23,7 +23,7 @@ import { EventActions } from "@/components/events/event-actions"
 import { RateEventForm } from "@/components/events/rate-event-form"
 import { RemindButton } from "@/components/events/remind-button"
 import { googleCalendarUrl } from "@/lib/ics"
-import { Star, QrCode, ListChecks, Flag, MessageCircle } from "lucide-react"
+import { Star, QrCode, ListChecks, Flag, MessageCircle, Radio, Route as RouteIcon } from "lucide-react"
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -45,6 +45,7 @@ async function getEvent(slug: string) {
       destination: true,
       assemblyPoint: true,
       checklist: true,
+      routeSummary: true,
       capacity: true,
       price: true,
       currency: true,
@@ -374,6 +375,33 @@ export default async function EventDetailPage({ params }: PageProps) {
             </div>
           )}
 
+          {/* Post-event: ride stats from GPS tracking */}
+          {isCompleted && event.routeSummary != null && (() => {
+            const rs = event.routeSummary as { distanceKm?: number; durationMin?: number; avgSpeedKmh?: number; maxSpeedKmh?: number }
+            const stats = [
+              { label: "Distance", value: rs.distanceKm != null ? `${rs.distanceKm} km` : null },
+              { label: "Duration", value: rs.durationMin != null ? `${Math.floor(rs.durationMin / 60)}h ${rs.durationMin % 60}m` : null },
+              { label: "Avg speed", value: rs.avgSpeedKmh != null ? `${rs.avgSpeedKmh} km/h` : null },
+              { label: "Top speed", value: rs.maxSpeedKmh ? `${rs.maxSpeedKmh} km/h` : null },
+            ].filter((s) => s.value)
+            return stats.length > 0 ? (
+              <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <RouteIcon className="h-5 w-5 text-orange-500" />
+                  <h2 className="text-base font-semibold text-white">Ride stats</h2>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {stats.map((s) => (
+                    <div key={s.label} className="text-center py-3 rounded-xl bg-zinc-800/30 border border-zinc-800/50">
+                      <p className="text-lg font-bold text-white">{s.value}</p>
+                      <p className="text-[10px] text-zinc-500 uppercase tracking-wider">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null
+          })()}
+
           {/* Post-event: leave a review */}
           {canReview && (
             <RateEventForm
@@ -491,12 +519,29 @@ export default async function EventDetailPage({ params }: PageProps) {
               )}
 
               {(isConfirmed || isOrganizer) && (
-                <Link href={`/events/${event.slug}/chat`} className="block mt-2">
-                  <Button variant="outline" className="w-full rounded-xl border-zinc-700 gap-2">
-                    <MessageCircle className="h-4 w-4" />
-                    Group chat
-                  </Button>
-                </Link>
+                <>
+                  <Link href={`/events/${event.slug}/chat`} className="block mt-2">
+                    <Button variant="outline" className="w-full rounded-xl border-zinc-700 gap-2">
+                      <MessageCircle className="h-4 w-4" />
+                      Group chat
+                    </Button>
+                  </Link>
+                  {(event.status === "ACTIVE" || isOrganizer) && event.status !== "COMPLETED" && event.status !== "ARCHIVED" && (
+                    <Link href={`/events/${event.slug}/live`} className="block mt-2">
+                      <Button
+                        variant="outline"
+                        className={`w-full rounded-xl gap-2 ${
+                          event.status === "ACTIVE"
+                            ? "border-green-500/40 text-green-400"
+                            : "border-zinc-700"
+                        }`}
+                      >
+                        <Radio className="h-4 w-4" />
+                        {event.status === "ACTIVE" ? "Live ride map" : "Ride map (start here)"}
+                      </Button>
+                    </Link>
+                  )}
+                </>
               )}
             </div>
 

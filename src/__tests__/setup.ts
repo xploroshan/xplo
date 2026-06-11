@@ -84,6 +84,12 @@ vi.mock("@/lib/db", () => ({
       findMany: vi.fn(),
       upsert: vi.fn(),
     },
+    locationPing: {
+      findMany: vi.fn(),
+      create: vi.fn(),
+      groupBy: vi.fn(),
+      deleteMany: vi.fn(),
+    },
     conversation: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
