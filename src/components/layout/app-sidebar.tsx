@@ -13,6 +13,7 @@ import {
   Pin,
   Plus,
   Building2,
+  Shield,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -161,6 +162,20 @@ export function AppSidebar() {
 
         {/* Notifications + User */}
         <div className="p-3 border-t border-zinc-800/50 space-y-1">
+          {["ADMIN", "SUPER_ADMIN"].includes(session?.user?.role ?? "") && (
+            <Link
+              href="/admin"
+              className={cn(
+                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
+                pathname.startsWith("/admin")
+                  ? "bg-orange-500/10 text-orange-500"
+                  : "text-zinc-400 hover:text-white hover:bg-zinc-800/50"
+              )}
+            >
+              <Shield className="h-5 w-5" />
+              Admin
+            </Link>
+          )}
           <Link
             href="/notifications"
             className={cn(
