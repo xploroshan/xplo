@@ -119,6 +119,25 @@ export async function POST(request: Request) {
       props: { handleClaimed: !me.slug },
     })
 
+    // Close the come-back loop: notify everyone who follows this organiser, so a
+    // follow actually pulls riders back when a new ride drops.
+    const followers = await db.follow.findMany({
+      where: { followingId: session.user.id },
+      select: { followerId: true },
+    })
+    if (followers.length > 0) {
+      await db.notification.createMany({
+        data: followers.map((f) => ({
+          type: "EVENT_INVITE" as const,
+          title: "New ride published",
+          content: `${me.name || "An organiser you follow"} just published "${data.title}"`,
+          link: `/events/${event.slug}`,
+          userId: f.followerId,
+          senderId: session.user!.id,
+        })),
+      })
+    }
+
     return NextResponse.json({ event: { slug: event.slug }, organizerSlug }, { status: 201 })
   } catch (error) {
     console.error("Event create error:", error)
