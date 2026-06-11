@@ -1,301 +1,336 @@
-"use client"
-
-import { useMemo } from "react"
-import { motion } from "framer-motion"
+import type { Metadata } from "next"
 import Link from "next/link"
-import { Building2, MapPin, TrendingUp, Compass } from "lucide-react"
-import { SmartFilterBar } from "@/components/events/smart-filter-bar"
-import { FeaturedCarousel } from "@/components/events/featured-carousel"
-import { UpcomingRow } from "@/components/events/upcoming-row"
+import { MapPin, Compass, SlidersHorizontal, Search } from "lucide-react"
+import type { EventStatus } from "@prisma/client"
+import { db } from "@/lib/db"
+import { APP_NAME, APP_URL } from "@/lib/constants"
 import { EventCard } from "@/components/events/event-card"
 import { PopularOrganizers } from "@/components/events/popular-organizers"
-import { RecommendedEvents } from "@/components/events/recommended-events"
-import { MOCK_EVENTS, MOCK_ORGANIZERS } from "@/lib/mock-data"
-import { getDestinationsFromEvents } from "@/lib/locations"
-import { useUIStore } from "@/stores/ui-store"
+import type { MockEvent, MockOrganizer } from "@/lib/mock-data"
 
-export default function EventsPage() {
-  const { filters } = useUIStore()
+const ACTIVE: EventStatus[] = ["PUBLISHED", "OPEN", "ACTIVE"]
 
-  const featuredEvents = MOCK_EVENTS.filter((e) => e.featured)
-  const availableDestinations = useMemo(() => getDestinationsFromEvents(MOCK_EVENTS), [])
+interface PageProps {
+  searchParams: Promise<{ city?: string; type?: string; q?: string }>
+}
 
-  const weekendEvents = useMemo(() => {
-    const now = new Date()
-    const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-    return MOCK_EVENTS.filter((e) => {
-      const d = new Date(e.startDate)
-      return d >= now && d <= weekFromNow
-    })
-  }, [])
+type DbEvent = Awaited<ReturnType<typeof getEvents>>[number]
 
-  const filteredEvents = useMemo(() => {
-    let events = [...MOCK_EVENTS]
+async function getEvents(where: object) {
+  return db.event.findMany({
+    where,
+    orderBy: { startDate: "asc" },
+    take: 48,
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      startDate: true,
+      endDate: true,
+      destination: true,
+      capacity: true,
+      price: true,
+      currency: true,
+      coverImage: true,
+      status: true,
+      featured: true,
+      eventType: { select: { name: true, slug: true, icon: true, color: true } },
+      organizer: { select: { id: true, name: true, slug: true, image: true, verified: true, city: true } },
+      participants: {
+        where: { status: "CONFIRMED" },
+        take: 3,
+        select: { id: true, user: { select: { name: true, image: true } } },
+      },
+      _count: { select: { participants: { where: { status: "CONFIRMED" } } } },
+    },
+  })
+}
 
-    // City filter — match start city
-    if (filters.city) {
-      events = events.filter((e) => e.city.toLowerCase() === filters.city!.toLowerCase())
-    }
+// Adapt a DB event to the shape EventCard renders (reuses the polished card).
+function toCardEvent(e: DbEvent): MockEvent {
+  const organizer: MockOrganizer = {
+    id: e.organizer.id,
+    name: e.organizer.name || "Organizer",
+    slug: e.organizer.slug || "",
+    image: e.organizer.image,
+    verified: e.organizer.verified,
+    bio: "",
+    city: e.organizer.city || "",
+    eventCount: 0,
+    followerCount: 0,
+    rating: 0,
+  }
+  const dest = (e.destination as { address?: string } | null) || {}
+  return {
+    id: e.id,
+    title: e.title,
+    slug: e.slug,
+    description: "",
+    startDate: new Date(e.startDate).toISOString(),
+    endDate: e.endDate ? new Date(e.endDate).toISOString() : null,
+    city: e.organizer.city || "",
+    country: "India",
+    startLocation: { address: "" },
+    destination: { address: dest.address || "Location TBD" },
+    capacity: e.capacity ?? 0,
+    registeredCount: e._count.participants,
+    price: e.price ? Number(e.price) : 0,
+    currency: e.currency,
+    coverImage: e.coverImage,
+    status: e.status,
+    featured: e.featured,
+    eventType: e.eventType ?? { name: "Event", slug: "", icon: "", color: "#f97316" },
+    organizer,
+    participants: e.participants.map((p) => ({
+      id: p.id,
+      name: p.user.name || "Rider",
+      image: p.user.image,
+    })),
+  }
+}
 
-    // Event type filter
-    if (filters.eventType) {
-      events = events.filter((e) => e.eventType.slug === filters.eventType)
-    }
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const { city, type } = await searchParams
+  const eventType = type
+    ? await db.eventType.findUnique({ where: { slug: type }, select: { name: true } })
+    : null
+  const what = eventType?.name ?? "Adventure events & rides"
+  const where = city ? ` in ${city}` : ""
+  const title = `${what}${where} — ${APP_NAME}`
+  const description = `Discover and join ${eventType?.name?.toLowerCase() ?? "rides, treks and group adventures"}${where ? ` around ${city}` : " near you"} on ${APP_NAME}.`
+  const qs = new URLSearchParams()
+  if (city) qs.set("city", city)
+  if (type) qs.set("type", type)
+  return {
+    title,
+    description,
+    alternates: { canonical: `${APP_URL}/events${qs.toString() ? `?${qs}` : ""}` },
+    openGraph: { title, description, url: `${APP_URL}/events`, type: "website" },
+  }
+}
 
-    // Destination filter — match destination city
-    if (filters.destination) {
-      events = events.filter((e) =>
-        e.destination.city?.toLowerCase() === filters.destination!.toLowerCase()
-      )
-    }
+export default async function EventsPage({ searchParams }: PageProps) {
+  const { city, type, q } = await searchParams
 
-    // Date range filter
-    if (filters.dateFrom) {
-      const from = new Date(filters.dateFrom)
-      from.setHours(0, 0, 0, 0)
-      events = events.filter((e) => new Date(e.startDate) >= from)
-    }
-    if (filters.dateTo) {
-      const to = new Date(filters.dateTo)
-      to.setHours(23, 59, 59, 999)
-      events = events.filter((e) => new Date(e.startDate) <= to)
-    }
+  const where: Record<string, unknown> = { status: { in: ACTIVE } }
+  if (type) where.eventType = { slug: type }
+  if (city) where.organizer = { city: { equals: city, mode: "insensitive" } }
+  if (q) where.title = { contains: q, mode: "insensitive" }
 
-    // Search query
-    if (filters.searchQuery) {
-      const q = filters.searchQuery.toLowerCase()
-      events = events.filter(
-        (e) =>
-          e.title.toLowerCase().includes(q) ||
-          e.description.toLowerCase().includes(q) ||
-          e.organizer.name.toLowerCase().includes(q) ||
-          e.startLocation.address.toLowerCase().includes(q) ||
-          e.destination.address.toLowerCase().includes(q)
-      )
-    }
+  const hasFilters = Boolean(city || type || q)
 
-    // Sort
-    if (filters.sortBy === "rating") {
-      events.sort((a, b) => (b.organizer.rating || 0) - (a.organizer.rating || 0))
-    } else if (filters.sortBy === "popularity") {
-      events.sort((a, b) => b.registeredCount - a.registeredCount)
-    } else {
-      events.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
-    }
+  const [events, types, cityRows, topOrganizers, featuredRaw] = await Promise.all([
+    getEvents(where),
+    db.eventType.findMany({ where: { isActive: true }, orderBy: { sortOrder: "asc" }, select: { name: true, slug: true, color: true } }),
+    db.$queryRaw<{ city: string; count: number }[]>`
+      select u.city as city, count(e.id)::int as count
+      from "Event" e join "User" u on e."organizerId" = u.id
+      where e.status in ('PUBLISHED','OPEN','ACTIVE') and u.city is not null
+      group by u.city order by count desc limit 8`,
+    db.user.findMany({
+      where: { role: { in: ["ORGANIZER", "ADMIN", "SUPER_ADMIN"] }, organizedEvents: { some: { status: { in: ACTIVE } } } },
+      orderBy: { followers: { _count: "desc" } },
+      take: 5,
+      select: {
+        id: true, name: true, slug: true, image: true, verified: true, city: true,
+        _count: { select: { organizedEvents: true, followers: true } },
+      },
+    }),
+    hasFilters
+      ? Promise.resolve([])
+      : getEvents({ status: { in: ACTIVE }, featured: true }),
+  ])
 
-    return events
-  }, [filters])
+  const cardEvents = events.map(toCardEvent)
+  const featured = (featuredRaw as DbEvent[]).map(toCardEvent).slice(0, 4)
 
-  const hasActiveFilters = filters.city || filters.dateFrom || filters.eventType || filters.destination || filters.searchQuery
-  const showDiscovery = !hasActiveFilters
+  const popularOrganizers: MockOrganizer[] = topOrganizers.map((o) => ({
+    id: o.id,
+    name: o.name || "Organizer",
+    slug: o.slug || "",
+    image: o.image,
+    verified: o.verified,
+    bio: "",
+    city: o.city || "",
+    eventCount: o._count.organizedEvents,
+    followerCount: o._count.followers,
+    rating: 0,
+  }))
 
-  // City stats for the hero area
-  const cityEventCounts = useMemo(() => {
-    const counts: Record<string, number> = {}
-    MOCK_EVENTS.forEach((e) => {
-      counts[e.city] = (counts[e.city] || 0) + 1
-    })
-    return Object.entries(counts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 6)
-  }, [])
+  // Build a query string preserving the other active filters.
+  const href = (patch: Partial<{ city: string; type: string; q: string }>) => {
+    const next = { city, type, q, ...patch }
+    const qs = new URLSearchParams()
+    if (next.city) qs.set("city", next.city)
+    if (next.type) qs.set("type", next.type)
+    if (next.q) qs.set("q", next.q)
+    const s = qs.toString()
+    return s ? `/events?${s}` : "/events"
+  }
+
+  // SEO: ItemList of the events on this page.
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    itemListElement: cardEvents.slice(0, 20).map((e, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      url: `${APP_URL}/events/${e.slug}`,
+      name: e.title,
+    })),
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* Hero Section */}
-      <motion.div
-        initial={{ opacity: 0, y: -15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="text-center space-y-2 pt-2 pb-3"
-      >
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+
+      {/* Hero */}
+      <div className="text-center space-y-2 pt-2 pb-1">
         <h1 className="text-2xl sm:text-3xl font-bold text-white">
-          Discover Adventures Near You
+          {type ? `${types.find((t) => t.slug === type)?.name ?? "Events"}` : "Discover Adventures"}
+          {city ? <span className="text-orange-400"> in {city}</span> : " Near You"}
         </h1>
         <p className="text-sm text-zinc-400 max-w-xl mx-auto">
-          Find events by city, date, activity type, and destination
+          Find rides, treks and group adventures by city and activity.
         </p>
-      </motion.div>
+      </div>
 
-      {/* Smart Filter Bar */}
-      <SmartFilterBar
-        availableDestinations={availableDestinations}
-        totalResults={filteredEvents.length}
-      />
+      {/* Search */}
+      <form action="/events" method="get" className="flex items-center gap-2 max-w-xl mx-auto">
+        {city && <input type="hidden" name="city" value={city} />}
+        {type && <input type="hidden" name="type" value={type} />}
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+          <input
+            name="q"
+            defaultValue={q || ""}
+            placeholder="Search events..."
+            className="w-full rounded-xl bg-zinc-900/60 border border-zinc-800 pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-orange-500/40"
+          />
+        </div>
+        <button type="submit" className="rounded-xl bg-orange-500 hover:bg-orange-600 px-4 py-2.5 text-sm font-medium text-white">
+          Search
+        </button>
+      </form>
 
-      {/* Quick City Chips (shown when no city selected) */}
-      {!filters.city && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none"
+      {/* Category chips */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <Link
+          href={href({ type: undefined })}
+          className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+            !type ? "bg-orange-500/15 text-orange-400 border-orange-500/30" : "bg-zinc-900/50 text-zinc-400 border-zinc-800 hover:text-white hover:border-zinc-700"
+          }`}
         >
-          <span className="text-xs text-zinc-500 shrink-0 mr-1">Popular:</span>
-          {cityEventCounts.map(([city, count]) => (
-            <QuickCityChip key={city} city={city} count={count} />
+          All
+        </Link>
+        {types.map((t) => (
+          <Link
+            key={t.slug}
+            href={href({ type: t.slug })}
+            className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+              type === t.slug ? "bg-orange-500/15 text-orange-400 border-orange-500/30" : "bg-zinc-900/50 text-zinc-400 border-zinc-800 hover:text-white hover:border-zinc-700"
+            }`}
+          >
+            {t.name}
+          </Link>
+        ))}
+      </div>
+
+      {/* City chips */}
+      {cityRows.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <span className="text-xs text-zinc-500 shrink-0 mr-1">Cities:</span>
+          {cityRows.map((c) => (
+            <Link
+              key={c.city}
+              href={href({ city: city === c.city ? undefined : c.city })}
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                city === c.city ? "bg-orange-500/15 text-orange-400 border-orange-500/30" : "bg-zinc-900/50 text-zinc-400 border-zinc-800 hover:text-white hover:border-zinc-700"
+              }`}
+            >
+              <MapPin className="h-3 w-3" />
+              {c.city}
+              <span className="text-[10px] opacity-60">{c.count}</span>
+            </Link>
           ))}
-        </motion.div>
+        </div>
       )}
 
-      {/* Main Content Area */}
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* Main Content */}
         <div className="flex-1 min-w-0 space-y-8">
-          {/* Featured Carousel — show in discovery mode */}
-          {showDiscovery && featuredEvents.length > 0 && (
-            <FeaturedCarousel events={featuredEvents} />
-          )}
-
-          {/* This Weekend Row — show in discovery mode */}
-          {showDiscovery && weekendEvents.length > 0 && (
-            <UpcomingRow events={weekendEvents} title="Happening This Week" />
-          )}
-
-          {/* AI Recommended — show in discovery mode */}
-          {showDiscovery && <RecommendedEvents />}
-
-          {/* Filtered / All Events */}
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg font-semibold text-white">
-                  {hasActiveFilters ? "Matching Events" : "All Events"}
-                </h2>
-                {filters.city && (
-                  <span className="flex items-center gap-1 text-xs text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full">
-                    <MapPin className="h-3 w-3" />
-                    {filters.city}
-                  </span>
-                )}
+          {/* Featured (discovery mode only) */}
+          {!hasFilters && featured.length > 0 && (
+            <section>
+              <h2 className="text-lg font-semibold text-white mb-4">Featured</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-5">
+                {featured.map((e, i) => (
+                  <EventCard key={e.id} event={e} index={i} />
+                ))}
               </div>
+            </section>
+          )}
+
+          <section>
+            <div className="flex items-center gap-3 mb-4">
+              <h2 className="text-lg font-semibold text-white">
+                {hasFilters ? "Matching Events" : "All Events"}
+              </h2>
+              <span className="text-xs text-zinc-500">{cardEvents.length} found</span>
+              {hasFilters && (
+                <Link href="/events" className="ml-auto text-xs text-orange-400 hover:text-orange-300">
+                  Clear filters
+                </Link>
+              )}
             </div>
 
-            {filteredEvents.length > 0 ? (
+            {cardEvents.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                {filteredEvents.map((event, i) => (
-                  <EventCard key={event.id} event={event} index={i} />
+                {cardEvents.map((e, i) => (
+                  <EventCard key={e.id} event={e} index={i} />
                 ))}
               </div>
             ) : (
-              <EmptyState />
+              <div className="text-center py-16">
+                <div className="w-16 h-16 rounded-full bg-zinc-800/50 flex items-center justify-center mx-auto mb-4">
+                  <Compass className="h-8 w-8 text-zinc-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">No events found</h3>
+                <p className="text-sm text-zinc-400 mb-4">Try a different city or activity.</p>
+                <Link href="/events" className="inline-block px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium">
+                  Clear filters
+                </Link>
+              </div>
             )}
           </section>
         </div>
 
-        {/* Desktop Sidebar */}
-        <div className="hidden lg:block w-72 shrink-0 space-y-6">
-          {/* City Quick Stats */}
+        {/* Sidebar */}
+        <aside className="hidden lg:block w-72 shrink-0 space-y-6">
           <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-5">
             <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-              <Compass className="h-4 w-4 text-orange-500" />
+              <SlidersHorizontal className="h-4 w-4 text-orange-500" />
               Events by City
             </h3>
-            <div className="space-y-2">
-              {cityEventCounts.map(([city, count]) => (
-                <CityStatRow key={city} city={city} count={count} />
+            <div className="space-y-1">
+              {cityRows.map((c) => (
+                <Link
+                  key={c.city}
+                  href={href({ city: c.city })}
+                  className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-zinc-800/50 transition-colors text-left group"
+                >
+                  <span className="flex items-center gap-2 text-sm text-zinc-400 group-hover:text-white">
+                    <MapPin className="h-3 w-3 text-zinc-600" />
+                    {c.city}
+                  </span>
+                  <span className="text-xs text-zinc-500 font-medium">{c.count}</span>
+                </Link>
               ))}
             </div>
           </div>
 
-          <PopularOrganizers organizers={MOCK_ORGANIZERS.slice(0, 5)} />
-
-          <Link
-            href="/organizations"
-            className="flex items-center gap-3 rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-5 hover:border-orange-500/30 transition-colors group"
-          >
-            <Building2 className="h-8 w-8 text-orange-500 group-hover:scale-110 transition-transform" />
-            <div>
-              <h3 className="text-sm font-semibold text-white">Organizations</h3>
-              <p className="text-xs text-zinc-500">Browse verified org profiles</p>
-            </div>
-          </Link>
-
-          <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-5">
-            <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-orange-500" />
-              Platform Stats
-            </h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-zinc-400">Active Events</span>
-                <span className="text-sm font-semibold text-white">{MOCK_EVENTS.filter(e => e.status === "OPEN").length}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-zinc-400">Organizers</span>
-                <span className="text-sm font-semibold text-white">{MOCK_ORGANIZERS.length}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-zinc-400">Community</span>
-                <span className="text-sm font-semibold text-white">2,400+</span>
-              </div>
-            </div>
-          </div>
-        </div>
+          {popularOrganizers.length > 0 && <PopularOrganizers organizers={popularOrganizers} />}
+        </aside>
       </div>
     </div>
-  )
-}
-
-function QuickCityChip({ city, count }: { city: string; count: number }) {
-  const setCity = useUIStore((s) => s.setCity)
-  const activeCity = useUIStore((s) => s.filters.city)
-
-  return (
-    <button
-      onClick={() => setCity(activeCity === city ? null : city)}
-      className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-        activeCity === city
-          ? "bg-orange-500/15 text-orange-400 border-orange-500/30"
-          : "bg-zinc-900/50 text-zinc-400 border-zinc-800 hover:text-white hover:border-zinc-700"
-      }`}
-    >
-      <MapPin className="h-3 w-3" />
-      {city}
-      <span className="text-[10px] opacity-60">{count}</span>
-    </button>
-  )
-}
-
-function CityStatRow({ city, count }: { city: string; count: number }) {
-  const setCity = useUIStore((s) => s.setCity)
-
-  return (
-    <button
-      onClick={() => setCity(city)}
-      className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-zinc-800/50 transition-colors group text-left"
-    >
-      <span className="flex items-center gap-2 text-sm text-zinc-400 group-hover:text-white transition-colors">
-        <MapPin className="h-3 w-3 text-zinc-600" />
-        {city}
-      </span>
-      <span className="text-xs text-zinc-500 font-medium">{count}</span>
-    </button>
-  )
-}
-
-function EmptyState() {
-  const resetFilters = useUIStore((s) => s.resetFilters)
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="text-center py-16 px-4"
-    >
-      <div className="w-16 h-16 rounded-full bg-zinc-800/50 flex items-center justify-center mx-auto mb-4">
-        <Compass className="h-8 w-8 text-zinc-600" />
-      </div>
-      <h3 className="text-lg font-semibold text-white mb-2">No events found</h3>
-      <p className="text-sm text-zinc-400 mb-4 max-w-sm mx-auto">
-        Try adjusting your filters or explore events in a different city
-      </p>
-      <button
-        onClick={resetFilters}
-        className="px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium transition-colors"
-      >
-        Clear All Filters
-      </button>
-    </motion.div>
   )
 }
