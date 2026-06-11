@@ -30,20 +30,39 @@ export async function GET(
     return NextResponse.json({ error: "No access" }, { status: 403 })
   }
 
-  const after = new URL(request.url).searchParams.get("after")
+  const sp = new URL(request.url).searchParams
+  const after = sp.get("after")
+  const before = sp.get("before")
+  const PAGE = 50
+
+  // History paging — scroll up into older DMs.
+  if (before) {
+    const older = await db.message.findMany({
+      where: { conversationId: id, createdAt: { lt: new Date(before) } },
+      orderBy: { createdAt: "desc" },
+      take: PAGE,
+      select: SELECT,
+    })
+    return NextResponse.json({
+      messages: older.reverse().map((m) => ({ ...m, content: m.deleted ? null : m.content })),
+      hasMore: older.length === PAGE,
+    })
+  }
+
   const where = after
     ? { conversationId: id, createdAt: { gt: new Date(after) } }
     : { conversationId: id }
   const messages = await db.message.findMany({
     where,
     orderBy: { createdAt: after ? "asc" : "desc" },
-    take: after ? 200 : 50,
+    take: after ? 200 : PAGE,
     select: SELECT,
   })
   const ordered = after ? messages : messages.reverse()
 
   return NextResponse.json({
     messages: ordered.map((m) => ({ ...m, content: m.deleted ? null : m.content })),
+    hasMore: !after && ordered.length === PAGE,
     me: session.user.id,
   })
 }

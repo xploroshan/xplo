@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import * as Ably from "ably"
+import { acquireRealtimeClient, releaseRealtimeClient } from "@/lib/realtime-client"
 
 interface Options {
   enabled: boolean
@@ -29,11 +30,11 @@ export function useRealtime({ enabled, channelName, selfId, onChange, presence }
 
   useEffect(() => {
     if (!enabled) return
-    let client: Ably.Realtime | null = null
     let cancelled = false
+    const timers = typingTimers.current
 
-    // echoMessages:false → we never receive our own pokes/typing.
-    client = new Ably.Realtime({ authUrl: "/api/realtime/token", echoMessages: false })
+    // Reuse the tab-wide shared connection; just attach to our channel here.
+    const client = acquireRealtimeClient()
     const channel = client.channels.get(channelName)
     channelRef.current = channel
 
@@ -43,8 +44,8 @@ export function useRealtime({ enabled, channelName, selfId, onChange, presence }
       const name = (msg.data as { name?: string } | undefined)?.name
       if (!name || msg.clientId === selfId) return
       setTypingNames((prev) => (prev.includes(name) ? prev : [...prev, name]))
-      clearTimeout(typingTimers.current[name])
-      typingTimers.current[name] = setTimeout(
+      clearTimeout(timers[name])
+      timers[name] = setTimeout(
         () => setTypingNames((prev) => prev.filter((n) => n !== name)),
         3500
       )
@@ -65,14 +66,17 @@ export function useRealtime({ enabled, channelName, selfId, onChange, presence }
 
     return () => {
       cancelled = true
-      Object.values(typingTimers.current).forEach(clearTimeout)
+      Object.values(timers).forEach(clearTimeout)
       try {
-        channel.presence.leave()
+        if (presence) channel.presence.leave()
       } catch {
         /* ignore */
       }
-      client?.close()
+      // Detach this channel but leave the shared connection up for others.
+      channel.unsubscribe()
+      channel.detach()
       channelRef.current = null
+      releaseRealtimeClient()
     }
   }, [enabled, channelName, selfId, presence])
 

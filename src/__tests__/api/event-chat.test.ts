@@ -31,6 +31,31 @@ describe("Event chat — access & send", () => {
     expect(data.canModerate).toBe(false)
   })
 
+  it("pages older history with a before cursor", async () => {
+    mockAuth.mockResolvedValue({ user: { id: "u-2", role: "USER" } } as never)
+    mockDb.event.findUnique.mockResolvedValue(activeEvent as never)
+    mockDb.eventParticipant.findUnique.mockResolvedValue({ status: "CONFIRMED", role: "MEMBER" } as never)
+    // A full page (50) signals there's more history behind the cursor.
+    mockDb.message.findMany.mockResolvedValue(
+      Array.from({ length: 50 }, (_, i) => ({
+        id: `m${i}`, content: "x", type: "TEXT", pinned: false, deleted: false,
+        editedAt: null, createdAt: new Date(), senderId: "u-2",
+        sender: { id: "u-2", name: "Sam", image: null }, replyTo: null,
+      })) as never
+    )
+
+    const res = await GET(
+      new Request("http://localhost/api/events/event-1/messages?before=2026-01-01T00:00:00Z"),
+      params()
+    )
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.hasMore).toBe(true)
+    expect(data.messages).toHaveLength(50)
+    // History paging must not run the separate pinned-messages query.
+    expect(mockDb.message.findMany).toHaveBeenCalledTimes(1)
+  })
+
   it("blocks a non-participant", async () => {
     mockAuth.mockResolvedValue({ user: { id: "rando", role: "USER" } } as never)
     mockDb.event.findUnique.mockResolvedValue(activeEvent as never)

@@ -191,6 +191,8 @@ vi.mock("@/lib/db", () => ({
       count: vi.fn(),
     },
     $transaction: vi.fn(),
+    $queryRaw: vi.fn(),
+    $executeRaw: vi.fn(),
   },
 }))
 

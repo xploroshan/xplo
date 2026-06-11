@@ -66,14 +66,23 @@ describe("like / delete / comment", () => {
 
   it("toggles a like and notifies the author", async () => {
     mockAuth.mockResolvedValue({ user: { id: "u-2", name: "Lee" } } as never)
-    mockDb.post.findUnique.mockResolvedValue({ id: "post-1", userId: "me", likedBy: [] } as never)
-    mockDb.post.update.mockResolvedValue({} as never)
+    // Atomic UPDATE ... RETURNING: the new array now includes the liker.
+    mockDb.$queryRaw.mockResolvedValue([{ likedBy: ["u-2"], userId: "me" }] as never)
 
     const res = await LIKE(new Request("http://localhost", { method: "POST" }), p())
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.liked).toBe(true)
+    expect(data.likes).toBe(1)
     expect(mockDb.notification.create).toHaveBeenCalled()
+  })
+
+  it("404s liking a post that doesn't exist", async () => {
+    mockAuth.mockResolvedValue({ user: { id: "u-2", name: "Lee" } } as never)
+    mockDb.$queryRaw.mockResolvedValue([] as never)
+
+    const res = await LIKE(new Request("http://localhost", { method: "POST" }), p())
+    expect(res.status).toBe(404)
   })
 
   it("blocks deleting someone else's post", async () => {

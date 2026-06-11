@@ -314,6 +314,9 @@ model Message {
 
   @@index([eventId, createdAt])
   @@index([conversationId, createdAt])
+  // Supports the event-chat delta poll: where eventId + updatedAt > cursor,
+  // ordered by updatedAt. Without this the cursor query can't use an index.
+  @@index([eventId, updatedAt])
   @@index([senderId])
 }
 

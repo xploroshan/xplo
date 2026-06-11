@@ -14,23 +14,19 @@ export async function POST(
   const me = session.user.id
   const { postId } = await params
 
-  const post = await db.post.findUnique({
-    where: { id: postId },
-    select: { bookmarkedBy: true },
-  })
-  if (!post) {
+  // Atomic toggle — see the like route for why this beats read-modify-write.
+  const rows = await db.$queryRaw<{ bookmarkedBy: string[] }[]>`
+    UPDATE "Post"
+    SET "bookmarkedBy" = CASE WHEN ${me} = ANY("bookmarkedBy")
+                              THEN array_remove("bookmarkedBy", ${me})
+                              ELSE array_append("bookmarkedBy", ${me}) END
+    WHERE "id" = ${postId}
+    RETURNING "bookmarkedBy"
+  `
+  if (rows.length === 0) {
     return NextResponse.json({ error: "Post not found" }, { status: 404 })
   }
 
-  const bookmarked = post.bookmarkedBy.includes(me)
-  await db.post.update({
-    where: { id: postId },
-    data: {
-      bookmarkedBy: bookmarked
-        ? post.bookmarkedBy.filter((u) => u !== me)
-        : [...post.bookmarkedBy, me],
-    },
-  })
-
-  return NextResponse.json({ bookmarked: !bookmarked })
+  const bookmarked = rows[0].bookmarkedBy.includes(me)
+  return NextResponse.json({ bookmarked })
 }

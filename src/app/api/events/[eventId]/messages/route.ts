@@ -30,6 +30,7 @@ export async function GET(
 
   const url = new URL(request.url)
   const after = url.searchParams.get("after")
+  const before = url.searchParams.get("before")
   const q = url.searchParams.get("q")?.trim()
 
   // Search mode — return matching (non-deleted) messages newest-first.
@@ -43,13 +44,29 @@ export async function GET(
     return NextResponse.json({ results: found.map((m) => presentMessage(m, session.user.id)) })
   }
 
+  // History paging: `before` is a createdAt cursor for scrolling up into older
+  // messages. Returns the 50 immediately older than the cursor (chronological).
+  const PAGE = 50
+  if (before) {
+    const older = await db.message.findMany({
+      where: { eventId, createdAt: { lt: new Date(before) } },
+      orderBy: { createdAt: "desc" },
+      take: PAGE,
+      select: MESSAGE_SELECT,
+    })
+    return NextResponse.json({
+      messages: older.reverse().map((m) => presentMessage(m, session.user.id)),
+      hasMore: older.length === PAGE,
+    })
+  }
+
   // `after` is an updatedAt cursor — it catches new messages AND edits/
   // reactions/pins/deletes on older ones (all bump updatedAt).
   const where = after ? { eventId, updatedAt: { gt: new Date(after) } } : { eventId }
   const messages = await db.message.findMany({
     where,
     orderBy: after ? { updatedAt: "asc" } : { createdAt: "desc" },
-    take: after ? 200 : 50,
+    take: after ? 200 : PAGE,
     select: MESSAGE_SELECT,
   })
   const ordered = after ? messages : messages.reverse()
@@ -64,6 +81,8 @@ export async function GET(
   return NextResponse.json({
     messages: ordered.map((m) => presentMessage(m, session.user.id)),
     pinned: pinned.map((m) => presentMessage(m, session.user.id)),
+    // A full initial page implies there may be older history to page into.
+    hasMore: !after && ordered.length === PAGE,
     chatActive: access.event.chatActive,
     canModerate: access.canModerate,
     me: session.user.id,

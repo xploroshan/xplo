@@ -17,7 +17,22 @@ describe("Event Registration API", () => {
     capacity: 50,
     requiresApproval: false,
     organizerId: "org-1",
-    _count: { participants: 10 },
+  }
+
+  // The route now decides status inside a locked $transaction, re-counting
+  // confirmed seats. Drive that callback with a tx whose count + create/update
+  // delegate to the existing top-level mocks.
+  function wireTx(confirmedCount: number) {
+    mockDb.$transaction.mockImplementation(async (fn) =>
+      fn({
+        $queryRaw: vi.fn().mockResolvedValue([{ "?column?": 1 }]),
+        eventParticipant: {
+          count: vi.fn().mockResolvedValue(confirmedCount),
+          create: mockDb.eventParticipant.create,
+          update: mockDb.eventParticipant.update,
+        },
+      } as never)
+    )
   }
 
   describe("POST /api/events/[eventId]/register", () => {
@@ -29,6 +44,7 @@ describe("Event Registration API", () => {
         id: "p-1",
         status: "CONFIRMED",
       } as never)
+      wireTx(10)
 
       const response = await POST(
         new Request("http://localhost/api/events/event-1/register", { method: "POST" }),
@@ -45,13 +61,13 @@ describe("Event Registration API", () => {
       mockDb.event.findUnique.mockResolvedValue({
         ...mockEvent,
         capacity: 10,
-        _count: { participants: 10 },
       } as never)
       mockDb.eventParticipant.findUnique.mockResolvedValue(null)
       mockDb.eventParticipant.create.mockResolvedValue({
         id: "p-1",
         status: "WAITLISTED",
       } as never)
+      wireTx(10) // already at capacity
 
       const response = await POST(
         new Request("http://localhost/api/events/event-1/register", { method: "POST" }),
@@ -74,6 +90,7 @@ describe("Event Registration API", () => {
         id: "p-1",
         status: "PENDING",
       } as never)
+      wireTx(0)
 
       const response = await POST(
         new Request("http://localhost/api/events/event-1/register", { method: "POST" }),
@@ -124,6 +141,7 @@ describe("Event Registration API", () => {
         id: "p-1",
         status: "CONFIRMED",
       } as never)
+      wireTx(10)
 
       const response = await POST(
         new Request("http://localhost/api/events/event-1/register", { method: "POST" }),
