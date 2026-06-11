@@ -23,6 +23,7 @@ import { EventActions } from "@/components/events/event-actions"
 import { RateEventForm } from "@/components/events/rate-event-form"
 import { RemindButton } from "@/components/events/remind-button"
 import { TicketPurchase } from "@/components/events/ticket-purchase"
+import { EventSummaryCard } from "@/components/events/event-summary-card"
 import { googleCalendarUrl } from "@/lib/ics"
 import { Star, QrCode, ListChecks, Flag, MessageCircle, Radio, Route as RouteIcon } from "lucide-react"
 
@@ -417,6 +418,9 @@ export default async function EventDetailPage({ params }: PageProps) {
               </div>
             ) : null
           })()}
+
+          {/* Post-event: AI recap (self-fetches; renders nothing if AI is off) */}
+          {isCompleted && <EventSummaryCard eventId={event.id} />}
 
           {/* Post-event: leave a review */}
           {canReview && (

@@ -10,6 +10,7 @@ import { PopularOrganizers } from "@/components/events/popular-organizers"
 import { EventsMapView, type MapEvent } from "@/components/events/events-map-view"
 import { EventCalendar, type CalendarEvent } from "@/components/events/event-calendar"
 import { CityAutoDetect } from "@/components/events/city-auto-detect"
+import { RecommendedEvents } from "@/components/events/recommended-events"
 import type { MockEvent, MockOrganizer } from "@/lib/mock-data"
 
 const ACTIVE: EventStatus[] = ["PUBLISHED", "OPEN", "ACTIVE"]
@@ -443,6 +444,9 @@ export default async function EventsPage({ searchParams }: PageProps) {
 
         {/* Sidebar */}
         <aside className="hidden lg:block w-72 shrink-0 space-y-6">
+          {/* AI picks (self-fetches; empty for logged-out or when AI is off) */}
+          <RecommendedEvents />
+
           <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-5">
             <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
               <SlidersHorizontal className="h-4 w-4 text-orange-500" />
