@@ -102,6 +102,7 @@ vi.mock("@/lib/db", () => ({
       findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     conversation: {
       findUnique: vi.fn(),

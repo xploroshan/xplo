@@ -34,11 +34,12 @@ describe("Razorpay signatures", () => {
 describe("fulfillOrder (idempotent)", () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it("fulfills a pending order exactly once", async () => {
+  it("fulfills a claimed order exactly once", async () => {
+    // The atomic claim succeeds (count 1 = this caller won the race).
+    mockDb.order.updateMany.mockResolvedValueOnce({ count: 1 } as never)
     mockDb.order.findUnique.mockResolvedValueOnce({
-      id: "o1", status: "PENDING", eventId: "e1", userId: "u1", ticketTypeId: "tt1", quantity: 1,
+      id: "o1", eventId: "e1", userId: "u1", ticketTypeId: "tt1", quantity: 1,
     } as never)
-    mockDb.order.update.mockResolvedValue({} as never)
     mockDb.ticketType.update.mockResolvedValue({} as never)
     mockDb.eventParticipant.upsert.mockResolvedValue({} as never)
     mockDb.event.findUnique.mockResolvedValue({ title: "Ride", slug: "ride", organizerId: "org" } as never)
@@ -55,13 +56,13 @@ describe("fulfillOrder (idempotent)", () => {
     )
   })
 
-  it("is a no-op for an already-paid order", async () => {
-    mockDb.order.findUnique.mockResolvedValueOnce({
-      id: "o1", status: "PAID", eventId: "e1", userId: "u1", ticketTypeId: "tt1", quantity: 1,
-    } as never)
+  it("is a no-op when the claim is lost (already paid / concurrent winner)", async () => {
+    // count 0 = another caller already flipped it to PAID.
+    mockDb.order.updateMany.mockResolvedValueOnce({ count: 0 } as never)
     const again = await fulfillOrder("o1", "pay_1")
     expect(again).toBe(false)
     expect(mockDb.eventParticipant.upsert).not.toHaveBeenCalled()
+    expect(mockDb.ticketType.update).not.toHaveBeenCalled()
   })
 })
 
