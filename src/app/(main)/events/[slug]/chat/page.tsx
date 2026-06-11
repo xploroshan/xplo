@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react"
 import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
 import { getEventChatAccess } from "@/lib/chat"
+import { realtimeEnabled } from "@/lib/realtime"
 import { EventChat } from "@/components/messages/event-chat"
 
 interface PageProps {
@@ -34,7 +35,12 @@ export default async function EventChatPage({ params }: PageProps) {
           <p className="text-[11px] text-zinc-500">Group chat</p>
         </div>
       </div>
-      <EventChat eventId={event.id} eventTitle={access.event.title} />
+      <EventChat
+        eventId={event.id}
+        eventTitle={access.event.title}
+        realtime={realtimeEnabled()}
+        selfName={session.user.name || "Someone"}
+      />
     </div>
   )
 }

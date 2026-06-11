@@ -9,9 +9,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { useRealtime } from "@/hooks/use-realtime"
 
 const QUICK_REACTIONS = ["👍", "❤️", "🔥", "😂", "🎉", "🙏"]
-const POLL_MS = 4000
 
 interface Reaction { emoji: string; count: number; mine: boolean }
 interface PollOption { text: string; votes: number; mine: boolean }
@@ -29,6 +29,7 @@ interface Msg {
   deleted: boolean
   editedAt: string | null
   createdAt: string
+  updatedAt: string
   senderId: string
   sender: { id: string; name: string | null; image: string | null }
   replyTo: { id: string; content: string | null; senderName: string | null } | null
@@ -45,7 +46,17 @@ function renderText(text: string) {
   )
 }
 
-export function EventChat({ eventId, eventTitle }: { eventId: string; eventTitle: string }) {
+export function EventChat({
+  eventId,
+  eventTitle,
+  realtime = false,
+  selfName = "",
+}: {
+  eventId: string
+  eventTitle: string
+  realtime?: boolean
+  selfName?: string
+}) {
   const [messages, setMessages] = useState<Msg[]>([])
   const [pinned, setPinned] = useState<Msg[]>([])
   const [me, setMe] = useState<string | null>(null)
@@ -98,11 +109,32 @@ export function EventChat({ eventId, eventTitle }: { eventId: string; eventTitle
         if (hasNew && atBottomRef.current) requestAnimationFrame(scrollToBottom)
         return merged
       })
-      const newest = (data.messages as Msg[])[data.messages.length - 1]
-      if (newest) lastAtRef.current = newest.createdAt
+      // Cursor tracks the max updatedAt (covers new + edited/reacted/deleted).
+      const maxUpdated = (data.messages as Msg[]).reduce(
+        (mx, m) => (m.updatedAt > mx ? m.updatedAt : mx),
+        lastAtRef.current ?? ""
+      )
+      if (maxUpdated) lastAtRef.current = maxUpdated
       markRead()
     }
   }, [eventId, scrollToBottom, markRead])
+
+  // Realtime: instant pokes + typing + presence (falls back to polling alone).
+  const { onlineCount, typingNames, sendTyping } = useRealtime({
+    enabled: realtime,
+    channelName: `event:${eventId}:chat`,
+    selfId: me,
+    onChange: load,
+    presence: true,
+  })
+  const lastTypingRef = useRef(0)
+  function notifyTyping() {
+    const now = Date.now()
+    if (realtime && selfName && now - lastTypingRef.current > 2000) {
+      lastTypingRef.current = now
+      sendTyping(selfName)
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -114,12 +146,13 @@ export function EventChat({ eventId, eventTitle }: { eventId: string; eventTitle
         requestAnimationFrame(scrollToBottom)
       }
     })()
-    const t = setInterval(load, POLL_MS)
+    // With realtime on, polling is just a safety net; otherwise it's the driver.
+    const t = setInterval(load, realtime ? 15000 : 4000)
     return () => {
       active = false
       clearInterval(t)
     }
-  }, [load, scrollToBottom, markRead])
+  }, [load, scrollToBottom, markRead, realtime])
 
   // Replace a single message in state from an API response (react/vote/edit).
   function patchMsg(updated: Msg) {
@@ -373,6 +406,23 @@ export function EventChat({ eventId, eventTitle }: { eventId: string; eventTitle
         </div>
       )}
 
+      {/* Live status: typing + presence */}
+      {realtime && (typingNames.length > 0 || onlineCount > 1) && (
+        <div className="px-4 py-1 flex items-center justify-between text-[11px] text-zinc-500">
+          <span className="text-orange-400/90">
+            {typingNames.length > 0
+              ? `${typingNames.slice(0, 2).join(", ")}${typingNames.length > 2 ? " +" : ""} typing…`
+              : ""}
+          </span>
+          {onlineCount > 1 && (
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+              {onlineCount} online
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Composer */}
       <div className="border-t border-zinc-800/50 bg-zinc-950 p-3">
         {replyTo && (
@@ -391,7 +441,7 @@ export function EventChat({ eventId, eventTitle }: { eventId: string; eventTitle
             <button onClick={() => setShowPoll((s) => !s)} title="Poll" className="h-10 w-10 shrink-0 rounded-xl text-zinc-400 hover:text-white flex items-center justify-center"><BarChart3 className="h-5 w-5" /></button>
             <textarea
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => { setInput(e.target.value); notifyTyping() }}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (input.trim()) sendMessage({ content: input.trim() }) } }}
               rows={1}
               placeholder="Message the group…  @name to mention"

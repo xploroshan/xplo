@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { getEventChatAccess } from "@/lib/chat"
 import { presentMessage, MESSAGE_SELECT, type MsgMeta } from "@/lib/chat-messages"
+import { publishChange, eventChatChannel } from "@/lib/realtime"
 
 const body = z.object({ option: z.number().int().min(0).max(5) })
 
@@ -59,6 +60,8 @@ export async function POST(
     data: { metadata: { ...meta, poll: { ...meta.poll, votes } } as object },
     select: MESSAGE_SELECT,
   })
+
+  await publishChange(eventChatChannel(eventId), "update")
 
   return NextResponse.json({ message: presentMessage(updated, userId) })
 }

@@ -5,6 +5,7 @@ import { db } from "@/lib/db"
 import { rateLimit } from "@/lib/rate-limit"
 import { sanitizeInput } from "@/lib/sanitize"
 import { getConversationAccess } from "@/lib/dm"
+import { publishChange, conversationChannel } from "@/lib/realtime"
 
 const SELECT = {
   id: true,
@@ -95,6 +96,8 @@ export async function POST(
       senderId: session.user.id,
     },
   })
+
+  await publishChange(conversationChannel(id), "new")
 
   return NextResponse.json({ message: { ...message, content: message.content } }, { status: 201 })
 }

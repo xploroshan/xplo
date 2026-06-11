@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react"
 import { db } from "@/lib/db"
 import { auth } from "@/lib/auth"
 import { getConversationAccess } from "@/lib/dm"
+import { realtimeEnabled } from "@/lib/realtime"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { DmThread } from "@/components/messages/dm-thread"
 
@@ -38,7 +39,7 @@ export default async function DmPage({ params }: { params: Promise<{ id: string 
         </Avatar>
         <h1 className="text-sm font-semibold text-white">{other?.name ?? "Rider"}</h1>
       </div>
-      <DmThread conversationId={id} />
+      <DmThread conversationId={id} realtime={realtimeEnabled()} />
     </div>
   )
 }

@@ -17,6 +17,7 @@ export const MESSAGE_SELECT = {
   deleted: true,
   editedAt: true,
   createdAt: true,
+  updatedAt: true,
   senderId: true,
   sender: { select: { id: true, name: true, image: true } },
   replyTo: {
@@ -33,6 +34,7 @@ interface RawMessage {
   deleted: boolean
   editedAt: Date | null
   createdAt: Date
+  updatedAt: Date
   senderId: string
   sender: { id: string; name: string | null; image: string | null }
   replyTo: { id: string; content: string; deleted: boolean; sender: { name: string | null } } | null
@@ -70,6 +72,7 @@ export function presentMessage(m: RawMessage, me: string) {
     deleted: m.deleted,
     editedAt: m.editedAt,
     createdAt: m.createdAt,
+    updatedAt: m.updatedAt,
     senderId: m.senderId,
     sender: m.sender,
     replyTo: m.replyTo

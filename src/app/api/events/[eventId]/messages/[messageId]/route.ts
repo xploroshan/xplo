@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { sanitizeInput } from "@/lib/sanitize"
 import { getEventChatAccess } from "@/lib/chat"
+import { publishChange, eventChatChannel } from "@/lib/realtime"
 
 const patchBody = z.object({
   pinned: z.boolean().optional(),
@@ -45,6 +46,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Only the organizer can pin messages" }, { status: 403 })
     }
     await db.message.update({ where: { id: messageId }, data: { pinned: parsed.data.pinned } })
+    await publishChange(eventChatChannel(eventId), "update")
     return NextResponse.json({ pinned: parsed.data.pinned })
   }
 
@@ -62,6 +64,7 @@ export async function PATCH(
       where: { id: messageId },
       data: { content: sanitizeInput(parsed.data.content), editedAt: new Date() },
     })
+    await publishChange(eventChatChannel(eventId), "update")
     return NextResponse.json({ edited: true })
   }
 
@@ -95,5 +98,6 @@ export async function DELETE(
   }
 
   await db.message.update({ where: { id: messageId }, data: { deleted: true, pinned: false } })
+  await publishChange(eventChatChannel(eventId), "update")
   return NextResponse.json({ deleted: true })
 }

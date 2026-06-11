@@ -5,6 +5,7 @@ import { Send, Loader2 } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useRealtime } from "@/hooks/use-realtime"
 
 interface Msg {
   id: string
@@ -15,7 +16,7 @@ interface Msg {
   sender: { id: string; name: string | null; image: string | null }
 }
 
-export function DmThread({ conversationId }: { conversationId: string }) {
+export function DmThread({ conversationId, realtime = false }: { conversationId: string; realtime?: boolean }) {
   const [messages, setMessages] = useState<Msg[]>([])
   const [me, setMe] = useState<string | null>(null)
   const [input, setInput] = useState("")
@@ -48,12 +49,14 @@ export function DmThread({ conversationId }: { conversationId: string }) {
     }
   }, [conversationId, scrollToBottom])
 
+  useRealtime({ enabled: realtime, channelName: `conversation:${conversationId}`, selfId: me, onChange: load })
+
   useEffect(() => {
     let active = true
     ;(async () => { await load(); if (active) { setLoading(false); requestAnimationFrame(scrollToBottom) } })()
-    const t = setInterval(load, 4000)
+    const t = setInterval(load, realtime ? 15000 : 4000)
     return () => { active = false; clearInterval(t) }
-  }, [load, scrollToBottom])
+  }, [load, scrollToBottom, realtime])
 
   async function send() {
     const content = input.trim()

@@ -5,6 +5,7 @@ import { db } from "@/lib/db"
 import { rateLimit } from "@/lib/rate-limit"
 import { sanitizeInput } from "@/lib/sanitize"
 import { getEventChatAccess } from "@/lib/chat"
+import { publishChange, eventChatChannel } from "@/lib/realtime"
 import {
   MESSAGE_SELECT,
   presentMessage,
@@ -42,10 +43,12 @@ export async function GET(
     return NextResponse.json({ results: found.map((m) => presentMessage(m, session.user.id)) })
   }
 
-  const where = after ? { eventId, createdAt: { gt: new Date(after) } } : { eventId }
+  // `after` is an updatedAt cursor — it catches new messages AND edits/
+  // reactions/pins/deletes on older ones (all bump updatedAt).
+  const where = after ? { eventId, updatedAt: { gt: new Date(after) } } : { eventId }
   const messages = await db.message.findMany({
     where,
-    orderBy: { createdAt: after ? "asc" : "desc" },
+    orderBy: after ? { updatedAt: "asc" } : { createdAt: "desc" },
     take: after ? 200 : 50,
     select: MESSAGE_SELECT,
   })
@@ -170,6 +173,8 @@ export async function POST(
       })),
     })
   }
+
+  await publishChange(eventChatChannel(eventId), "new")
 
   return NextResponse.json({ message: presentMessage(message, userId) }, { status: 201 })
 }

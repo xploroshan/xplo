@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { getEventChatAccess } from "@/lib/chat"
 import { presentMessage, MESSAGE_SELECT, type MsgMeta } from "@/lib/chat-messages"
+import { publishChange, eventChatChannel } from "@/lib/realtime"
 
 // A small allowlist keeps reactions tidy and avoids arbitrary payloads.
 const ALLOWED = ["👍", "❤️", "🔥", "😂", "🎉", "😮", "😢", "🙏"]
@@ -52,6 +53,8 @@ export async function POST(
     data: { metadata: { ...meta, reactions } as object },
     select: MESSAGE_SELECT,
   })
+
+  await publishChange(eventChatChannel(eventId), "update")
 
   return NextResponse.json({ message: presentMessage(updated, userId) })
 }
