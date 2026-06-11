@@ -4,6 +4,7 @@ import Google from "next-auth/providers/google"
 import Credentials from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { db } from "@/lib/db"
+import { verifyTotp } from "@/lib/totp"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
@@ -25,6 +26,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
+        code: { label: "2FA code", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
@@ -59,6 +61,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             },
           })
           return null
+        }
+
+        // Second factor: if 2FA is on, a valid TOTP code is required.
+        if (user.twoFactorEnabled && user.twoFactorSecret) {
+          const code = (credentials.code as string | undefined)?.trim()
+          if (!code || !verifyTotp(code, user.twoFactorSecret)) {
+            return null
+          }
         }
 
         // Reset failed attempts on successful login

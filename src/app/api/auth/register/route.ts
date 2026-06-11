@@ -6,6 +6,7 @@ import { db } from "@/lib/db"
 import { registerSchema } from "@/lib/validations/auth"
 import { rateLimit, getClientIp } from "@/lib/rate-limit"
 import { sanitizeInput } from "@/lib/sanitize"
+import { sendVerificationEmail } from "@/lib/verification"
 
 async function generateUniqueSlug(baseName: string): Promise<string> {
   const base = slugify(baseName, { lower: true, strict: true })
@@ -80,6 +81,9 @@ export async function POST(request: Request) {
         slug: finalSlug,
       },
     })
+
+    // Send the email-verification link (best-effort; no-ops without Resend).
+    await sendVerificationEmail(user.id, email)
 
     return NextResponse.json(
       { message: "Account created successfully", slug: user.slug },
