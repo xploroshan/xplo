@@ -132,6 +132,16 @@ export default async function EventDetailPage({ params }: PageProps) {
     }
   }
 
+  // Organizer's track record: mean rating across all their reviewed events,
+  // shown *before* joining so riders can judge the organizer up front.
+  const orgRating = await db.eventParticipant.aggregate({
+    where: { event: { organizerId: event.organizer.id }, rating: { not: null } },
+    _avg: { rating: true },
+    _count: { rating: true },
+  })
+  const organizerRating = orgRating._avg.rating
+  const organizerRatingCount = orgRating._count.rating
+
   // Paid ticket tiers (active). When present, they replace the free RSVP button.
   const ticketTypes = await db.ticketType.findMany({
     where: { eventId: event.id, isActive: true },
@@ -726,8 +736,18 @@ export default async function EventDetailPage({ params }: PageProps) {
                     <span className="text-sm font-semibold text-white">{event.organizer.name}</span>
                     {event.organizer.verified && <CheckCircle2 className="h-3.5 w-3.5 text-orange-500" />}
                   </div>
-                  <span className="text-xs text-zinc-500">
+                  <span className="text-xs text-zinc-500 flex items-center gap-1.5">
                     {event.organizer._count.organizedEvents} events
+                    {organizerRating !== null && (
+                      <>
+                        <span className="text-zinc-700">·</span>
+                        <span className="inline-flex items-center gap-0.5 text-amber-400">
+                          <Star className="h-3 w-3 fill-amber-400" />
+                          {organizerRating.toFixed(1)}
+                          <span className="text-zinc-500">({organizerRatingCount})</span>
+                        </span>
+                      </>
+                    )}
                   </span>
                 </div>
               </div>

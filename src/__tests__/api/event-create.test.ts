@@ -52,6 +52,29 @@ describe("Create event API — difficulty & AI assessment", () => {
     expect(mockDb.event.create).not.toHaveBeenCalled()
   })
 
+  it("stores lat/lng in the location JSON when the map picker provides them", async () => {
+    const res = await POST(
+      req({
+        ...base,
+        startLocationAddress: "MG Road, Bangalore",
+        startLocationLat: 12.97,
+        startLocationLng: 77.6,
+        destinationAddress: "Goa",
+        destinationLat: 15.3,
+        destinationLng: 74.1,
+      })
+    )
+    expect(res.status).toBe(201)
+    expect(mockDb.event.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          startLocation: { address: "MG Road, Bangalore", lat: 12.97, lng: 77.6 },
+          destination: { address: "Goa", lat: 15.3, lng: 74.1 },
+        }),
+      })
+    )
+  })
+
   it("creates without difficulty/aiAssessment (both optional)", async () => {
     const res = await POST(req(base))
     expect(res.status).toBe(201)

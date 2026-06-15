@@ -33,8 +33,11 @@ interface PageProps {
     view?: string
     price?: string
     avail?: string
+    difficulty?: string
   }>
 }
+
+const DIFFICULTIES = ["beginner", "intermediate", "advanced", "expert"]
 
 type DbEvent = Awaited<ReturnType<typeof getEvents>>[number]
 
@@ -132,11 +135,12 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
 }
 
 export default async function EventsPage({ searchParams }: PageProps) {
-  const { city, type, q, view, price, avail } = await searchParams
+  const { city, type, q, view, price, avail, difficulty } = await searchParams
 
   const and: object[] = []
   const where: Record<string, unknown> = { status: { in: ACTIVE }, AND: and }
   if (type) where.eventType = { slug: type }
+  if (difficulty && DIFFICULTIES.includes(difficulty)) where.difficulty = difficulty
   if (city) where.organizer = { city: { equals: city, mode: "insensitive" } }
   // Search across title + description (case-insensitive).
   if (q) {
@@ -151,7 +155,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
   if (price === "free") and.push({ OR: [{ price: null }, { price: 0 }] })
   else if (price === "paid") and.push({ price: { gt: 0 } })
 
-  const hasFilters = Boolean(city || type || q || price || avail)
+  const hasFilters = Boolean(city || type || q || price || avail || difficulty)
 
   const [events, types, cityRows, topOrganizers, featuredRaw] = await Promise.all([
     getEvents(where),
@@ -243,8 +247,8 @@ export default async function EventsPage({ searchParams }: PageProps) {
   }))
 
   // Build a query string preserving the other active filters.
-  const href = (patch: Partial<{ city: string; type: string; q: string; view: string; price: string; avail: string }>) => {
-    const next = { city, type, q, view, price, avail, ...patch }
+  const href = (patch: Partial<{ city: string; type: string; q: string; view: string; price: string; avail: string; difficulty: string }>) => {
+    const next = { city, type, q, view, price, avail, difficulty, ...patch }
     const qs = new URLSearchParams()
     if (next.city) qs.set("city", next.city)
     if (next.type) qs.set("type", next.type)
@@ -252,6 +256,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
     if (next.view) qs.set("view", next.view)
     if (next.price) qs.set("price", next.price)
     if (next.avail) qs.set("avail", next.avail)
+    if (next.difficulty) qs.set("difficulty", next.difficulty)
     const s = qs.toString()
     return s ? `/events?${s}` : "/events"
   }
@@ -379,6 +384,15 @@ export default async function EventsPage({ searchParams }: PageProps) {
             <Link href={href({ price: price === "free" ? undefined : "free" })} className={chip(price === "free")}>Free</Link>
             <Link href={href({ price: price === "paid" ? undefined : "paid" })} className={chip(price === "paid")}>Paid</Link>
             <Link href={href({ avail: avail === "open" ? undefined : "open" })} className={chip(avail === "open")}>Has spots</Link>
+            {DIFFICULTIES.map((d) => (
+              <Link
+                key={d}
+                href={href({ difficulty: difficulty === d ? undefined : d })}
+                className={`${chip(difficulty === d)} capitalize`}
+              >
+                {d}
+              </Link>
+            ))}
           </div>
         )}
       </div>

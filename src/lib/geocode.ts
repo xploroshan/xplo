@@ -36,6 +36,20 @@ export async function geocode(address: string): Promise<LatLng | null> {
   }
 }
 
+/** Reverse-geocode a coordinate to a full display address. */
+export async function reverseAddress(lat: number, lng: number): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&zoom=16&lat=${lat}&lon=${lng}`,
+      { headers: { Accept: "application/json" } }
+    )
+    const data = await res.json()
+    return data?.display_name ?? null
+  } catch {
+    return null
+  }
+}
+
 /** Reverse-geocode a coordinate to a city/town name. */
 export async function reverseCity(lat: number, lng: number): Promise<string | null> {
   try {

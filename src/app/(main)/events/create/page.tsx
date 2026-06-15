@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AiEnhanceButton } from "@/components/events/ai-enhance-button"
 import { AiSuggestionsPanel } from "@/components/events/ai-suggestions-panel"
 import { OrgSelector } from "@/components/organizations/org-selector"
+import { LocationPicker } from "@/components/events/location-picker"
 import { ImageUpload } from "@/components/image-upload"
 import Link from "next/link"
 import { DEFAULT_EVENT_TYPES } from "@/lib/constants"
@@ -111,7 +112,11 @@ export default function CreateEventPage() {
           description: description.trim() || undefined,
           endDate: str("endDate"),
           startLocationAddress: str("startLocation"),
+          startLocationLat: num("startLocationLat"),
+          startLocationLng: num("startLocationLng"),
           destinationAddress: str("destination"),
+          destinationLat: num("destinationLat"),
+          destinationLng: num("destinationLng"),
           capacity: num("capacity"),
           price: num("price"),
           coverImage: coverImage ?? undefined,
@@ -332,22 +337,8 @@ export default function CreateEventPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300">Starting Point</label>
-              <Input
-                name="startLocation"
-                placeholder="Assembly point address"
-                className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus-visible:ring-orange-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300">Destination</label>
-              <Input
-                name="destination"
-                placeholder="Destination address"
-                className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus-visible:ring-orange-500"
-              />
-            </div>
+            <LocationPicker name="startLocation" label="Starting Point" placeholder="Assembly point address" />
+            <LocationPicker name="destination" label="Destination" placeholder="Destination address" />
           </CardContent>
         </Card>
 

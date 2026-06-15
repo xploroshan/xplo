@@ -15,7 +15,11 @@ const createEventBody = z.object({
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().optional(),
   startLocationAddress: z.string().optional(),
+  startLocationLat: z.number().optional(),
+  startLocationLng: z.number().optional(),
   destinationAddress: z.string().optional(),
+  destinationLat: z.number().optional(),
+  destinationLng: z.number().optional(),
   capacity: z.number().int().positive().optional(),
   price: z.number().nonnegative().optional(),
   coverImage: z.string().url().optional(),
@@ -126,10 +130,20 @@ export async function POST(request: Request) {
         startDate: new Date(data.startDate),
         endDate: data.endDate ? new Date(data.endDate) : null,
         startLocation: data.startLocationAddress
-          ? { address: data.startLocationAddress }
+          ? {
+              address: data.startLocationAddress,
+              ...(data.startLocationLat != null && data.startLocationLng != null
+                ? { lat: data.startLocationLat, lng: data.startLocationLng }
+                : {}),
+            }
           : undefined,
         destination: data.destinationAddress
-          ? { address: data.destinationAddress }
+          ? {
+              address: data.destinationAddress,
+              ...(data.destinationLat != null && data.destinationLng != null
+                ? { lat: data.destinationLat, lng: data.destinationLng }
+                : {}),
+            }
           : undefined,
         capacity: data.capacity,
         price: data.price,
