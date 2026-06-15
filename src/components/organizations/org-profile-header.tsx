@@ -161,7 +161,7 @@ export function OrgProfileHeader({ org, isOwn = false }: OrgProfileHeaderProps) 
               <span className="text-xs">Rating</span>
             </div>
             <div className="flex items-center justify-center gap-1 text-lg font-bold text-white">
-              {org.avgRating !== null ? (
+              {org.avgRating != null ? (
                 <>
                   <Star className="h-4 w-4 fill-orange-500 text-orange-500" />
                   {org.avgRating.toFixed(1)}

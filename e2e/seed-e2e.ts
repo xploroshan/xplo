@@ -105,6 +105,12 @@ async function main() {
     create: { userId: rider.id, eventId: member.id, status: "CONFIRMED" },
   })
 
+  // Reset the rider's participation on the RSVP-target events so those specs
+  // start clean every run (the rider joins/cancels them during tests).
+  await prisma.eventParticipant.deleteMany({
+    where: { userId: rider.id, eventId: { in: [free.id, full.id] } },
+  })
+
   // Fill the "full" event so a fresh RSVP is waitlisted.
   for (let i = 0; i < 2; i++) {
     await prisma.eventParticipant.upsert({

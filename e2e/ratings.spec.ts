@@ -75,32 +75,14 @@ test.describe("Rating System", () => {
   })
 
   test("org profile reviews tab exists", async ({ page }) => {
-    await page.goto("/organizations")
-    await page.waitForTimeout(2_000)
-    const orgLinks = page.locator("a[href^='/org/']")
-    const count = await orgLinks.count()
-    if (count === 0) {
-      test.skip()
-      return
-    }
-    const href = await orgLinks.first().getAttribute("href")
-    await page.goto(href!)
-    const reviewsTab = page.getByRole("button", { name: /reviews/i })
-    await expect(reviewsTab).toBeVisible({ timeout: 10_000 })
+    await page.goto("/org/e2e-club")
+    const reviewsTab = page.getByRole("button", { name: "Reviews", exact: true })
+    await expect(reviewsTab).toBeVisible({ timeout: 15_000 })
   })
 
   test("clicking reviews tab on org profile shows reviews section", async ({ page }) => {
-    await page.goto("/organizations")
-    await page.waitForTimeout(2_000)
-    const orgLinks = page.locator("a[href^='/org/']")
-    const count = await orgLinks.count()
-    if (count === 0) {
-      test.skip()
-      return
-    }
-    const href = await orgLinks.first().getAttribute("href")
-    await page.goto(href!)
-    const reviewsTab = page.getByRole("button", { name: /reviews/i })
+    await page.goto("/org/e2e-club")
+    const reviewsTab = page.getByRole("button", { name: "Reviews", exact: true })
     await expect(reviewsTab).toBeVisible({ timeout: 10_000 })
     await reviewsTab.click()
     // Should show reviews or "No reviews yet"

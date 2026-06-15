@@ -70,6 +70,11 @@ export async function rateLimit(
   maxRequests: number,
   windowMs: number
 ): Promise<{ success: boolean; remaining: number }> {
+  // Opt-in bypass for deterministic E2E runs (never set in production).
+  if (process.env.E2E_DISABLE_RATE_LIMIT === "1") {
+    return { success: true, remaining: maxRequests }
+  }
+
   if (!redis) {
     return memoryRateLimit(key, maxRequests, windowMs)
   }

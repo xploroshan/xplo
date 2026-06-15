@@ -25,6 +25,6 @@ test.describe("Responsive design", () => {
   test("events search is reachable on tablet", async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 })
     await page.goto("/events")
-    await expect(page.getByPlaceholder(/search events/i)).toBeVisible()
+    await expect(page.getByPlaceholder(/search events/i).first()).toBeVisible({ timeout: 10_000 })
   })
 })

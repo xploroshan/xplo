@@ -20,10 +20,10 @@ test.describe("Admin Dashboard", () => {
       test.skip()
       return
     }
-    await expect(page.getByText("Total Users")).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByText("Active Events")).toBeVisible()
-    await expect(page.getByText("Organizations")).toBeVisible()
-    await expect(page.getByText("Total Ratings")).toBeVisible()
+    await expect(page.getByText("Total Users").first()).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText("Active Events").first()).toBeVisible()
+    await expect(page.getByText("Organizations").first()).toBeVisible()
+    await expect(page.getByText("Total Ratings").first()).toBeVisible()
   })
 
   test("shows Recent Events section", async ({ page }) => {
@@ -92,16 +92,17 @@ test.describe("Admin Dashboard", () => {
       test.skip()
       return
     }
-    // The stat values are rendered as text-3xl font-bold text-white
+    // Stat values share their typographic class with some headings, so count
+    // how many render a numeric value rather than asserting every match is one.
     const statValues = page.locator(".text-3xl.font-bold.text-white")
     await expect(statValues.first()).toBeVisible({ timeout: 10_000 })
     const count = await statValues.count()
-    expect(count).toBe(4)
+    let numeric = 0
     for (let i = 0; i < count; i++) {
-      const text = await statValues.nth(i).textContent()
-      // Values should be numeric (possibly with commas like "1,234")
-      expect(text).toMatch(/^[\d,]+$/)
+      const text = (await statValues.nth(i).textContent())?.trim() ?? ""
+      if (/^[\d,]+$/.test(text)) numeric++
     }
+    expect(numeric).toBeGreaterThanOrEqual(4)
   })
 })
 
@@ -197,7 +198,7 @@ test.describe("Admin Ratings Page", () => {
       test.skip()
       return
     }
-    await expect(page.getByText("Apply Override")).toBeVisible({
+    await expect(page.getByText("Apply Override").first()).toBeVisible({
       timeout: 10_000,
     })
   })
