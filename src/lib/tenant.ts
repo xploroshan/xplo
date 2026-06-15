@@ -77,3 +77,27 @@ export async function resolveTenant(label: string): Promise<Tenant | null> {
   }
   return null
 }
+
+/** Scope a tenant-owned content query (blogs/guidelines) by owner. */
+export function tenantContentWhere(tenant: Tenant): { organizationId: string } | { userId: string } {
+  return tenant.kind === "org" ? { organizationId: tenant.id } : { userId: tenant.id }
+}
+
+/**
+ * Can this signed-in user manage the tenant's content? Platform admins always;
+ * the individual organizer for their own site; org OWNER/ADMIN members for an org.
+ */
+export async function tenantOwnerAccess(
+  tenant: Tenant,
+  userId: string | undefined | null,
+  role?: string | null
+): Promise<boolean> {
+  if (!userId) return false
+  if (role === "ADMIN" || role === "SUPER_ADMIN") return true
+  if (tenant.kind === "user") return tenant.id === userId
+  const membership = await db.organizationMember.findUnique({
+    where: { userId_organizationId: { userId, organizationId: tenant.id } },
+    select: { role: true },
+  })
+  return !!membership && ["OWNER", "ADMIN"].includes(membership.role)
+}

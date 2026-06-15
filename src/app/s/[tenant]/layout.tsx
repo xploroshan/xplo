@@ -2,9 +2,10 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { Compass } from "lucide-react"
-import { resolveTenant } from "@/lib/tenant"
+import { resolveTenant, tenantOwnerAccess } from "@/lib/tenant"
 import { hexToHslTriplet } from "@/lib/color"
 import { APP_NAME } from "@/lib/constants"
+import { auth } from "@/lib/auth"
 import { TenantNav } from "@/components/site/tenant-nav"
 
 interface Props {
@@ -26,6 +27,9 @@ export default async function TenantLayout({ children, params }: Props) {
   const { tenant: label } = await params
   const tenant = await resolveTenant(label)
   if (!tenant) notFound()
+
+  const session = await auth()
+  const isOwner = await tenantOwnerAccess(tenant, session?.user?.id, session?.user?.role)
 
   // Per-tenant theme: override the shared CSS tokens for this subtree.
   const triplet = hexToHslTriplet(tenant.themeColor)
@@ -54,7 +58,7 @@ export default async function TenantLayout({ children, params }: Props) {
             )}
             <span className="text-lg font-bold text-white truncate">{tenant.name}</span>
           </Link>
-          <TenantNav />
+          <TenantNav isOwner={isOwner} />
         </div>
       </header>
 
