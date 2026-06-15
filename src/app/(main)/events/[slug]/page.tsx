@@ -24,8 +24,10 @@ import { RateEventForm } from "@/components/events/rate-event-form"
 import { RemindButton } from "@/components/events/remind-button"
 import { TicketPurchase } from "@/components/events/ticket-purchase"
 import { EventSummaryCard } from "@/components/events/event-summary-card"
+import { PlacesOfInterest } from "@/components/events/places-of-interest"
+import { AccommodationFinder } from "@/components/events/accommodation-finder"
 import { googleCalendarUrl } from "@/lib/ics"
-import { Star, QrCode, ListChecks, Flag, MessageCircle, Radio, Route as RouteIcon } from "lucide-react"
+import { Star, QrCode, ListChecks, Flag, MessageCircle, Radio, Route as RouteIcon, Gauge, Clock3, CloudSun, Dumbbell, ShieldAlert } from "lucide-react"
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -47,6 +49,8 @@ async function getEvent(slug: string) {
       destination: true,
       assemblyPoint: true,
       checklist: true,
+      difficulty: true,
+      aiAssessment: true,
       routeSummary: true,
       capacity: true,
       price: true,
@@ -111,15 +115,32 @@ export default async function EventDetailPage({ params }: PageProps) {
 
   const session = await auth()
   let isRegistered = false
-  let myParticipation: { status: string; rating: number | null; review: string | null } | null = null
+  let myParticipation: { status: string; rating: number | null; review: string | null; joinedAt: Date } | null = null
+  let waitlistPosition: number | null = null
   if (session?.user?.id) {
     const p = await db.eventParticipant.findUnique({
       where: { userId_eventId: { userId: session.user.id, eventId: event.id } },
-      select: { status: true, rating: true, review: true },
+      select: { status: true, rating: true, review: true, joinedAt: true },
     })
     isRegistered = !!p && p.status !== "CANCELLED"
     myParticipation = p
+    // Where the viewer sits in the waitlist queue (1-based, ordered by joinedAt).
+    if (p?.status === "WAITLISTED") {
+      waitlistPosition = await db.eventParticipant.count({
+        where: { eventId: event.id, status: "WAITLISTED", joinedAt: { lte: p.joinedAt } },
+      })
+    }
   }
+
+  // Organizer's track record: mean rating across all their reviewed events,
+  // shown *before* joining so riders can judge the organizer up front.
+  const orgRating = await db.eventParticipant.aggregate({
+    where: { event: { organizerId: event.organizer.id }, rating: { not: null } },
+    _avg: { rating: true },
+    _count: { rating: true },
+  })
+  const organizerRating = orgRating._avg.rating
+  const organizerRatingCount = orgRating._count.rating
 
   // Paid ticket tiers (active). When present, they replace the free RSVP button.
   const ticketTypes = await db.ticketType.findMany({
@@ -195,6 +216,23 @@ export default async function EventDetailPage({ params }: PageProps) {
   const checklist = Array.isArray(event.checklist) ? (event.checklist as string[]) : []
   const isConfirmed = myParticipation?.status === "CONFIRMED"
 
+  // AI enhance extras captured at creation (itinerary/safety/weather/fitness).
+  const ai = (event.aiAssessment as {
+    estimatedDuration?: string
+    weatherAdvisory?: string
+    fitnessRequirements?: string
+    safetyGuidelines?: string[]
+    itinerary?: Array<{ time?: string; activity?: string }>
+  } | null) ?? null
+  const difficulty = event.difficulty
+  const difficultyColor: Record<string, string> = {
+    beginner: "bg-green-500/15 text-green-400",
+    intermediate: "bg-blue-500/15 text-blue-400",
+    advanced: "bg-amber-500/15 text-amber-400",
+    expert: "bg-red-500/15 text-red-400",
+  }
+  const startDateIso = new Date(event.startDate).toISOString()
+
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
       <TrackView name="event_viewed" eventId={event.id} />
@@ -239,6 +277,12 @@ export default async function EventDetailPage({ params }: PageProps) {
               >
                 {event.status}
               </Badge>
+              {difficulty && (
+                <Badge className={`text-xs border-0 capitalize ${difficultyColor[difficulty] ?? "bg-zinc-500/20 text-zinc-300"}`}>
+                  <Gauge className="h-3 w-3 mr-1" />
+                  {difficulty}
+                </Badge>
+              )}
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">{event.title}</h1>
             <div className="flex items-center gap-2 text-sm text-zinc-400">
@@ -350,6 +394,77 @@ export default async function EventDetailPage({ params }: PageProps) {
                 ))}
               </ul>
             </div>
+          )}
+
+          {/* Itinerary (from AI enhance at creation) */}
+          {ai?.itinerary && ai.itinerary.length > 0 && (
+            <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Clock3 className="h-5 w-5 text-orange-500" />
+                <h2 className="text-base font-semibold text-white">Itinerary</h2>
+              </div>
+              <ul className="space-y-2">
+                {ai.itinerary.map((it, i) => (
+                  <li key={i} className="flex gap-3 text-sm">
+                    {it.time && <span className="text-orange-400 font-medium shrink-0 w-20">{it.time}</span>}
+                    <span className="text-zinc-300">{it.activity}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* At-a-glance: duration / weather / fitness */}
+          {(ai?.estimatedDuration || ai?.weatherAdvisory || ai?.fitnessRequirements) && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {ai.estimatedDuration && (
+                <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/50 p-4">
+                  <Clock3 className="h-5 w-5 text-orange-500 mb-2" />
+                  <p className="text-xs text-zinc-500 mb-0.5">Duration</p>
+                  <p className="text-sm text-white">{ai.estimatedDuration}</p>
+                </div>
+              )}
+              {ai.weatherAdvisory && (
+                <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/50 p-4">
+                  <CloudSun className="h-5 w-5 text-orange-500 mb-2" />
+                  <p className="text-xs text-zinc-500 mb-0.5">Weather</p>
+                  <p className="text-sm text-white">{ai.weatherAdvisory}</p>
+                </div>
+              )}
+              {ai.fitnessRequirements && (
+                <div className="rounded-xl border border-zinc-800/50 bg-zinc-900/50 p-4">
+                  <Dumbbell className="h-5 w-5 text-orange-500 mb-2" />
+                  <p className="text-xs text-zinc-500 mb-0.5">Fitness</p>
+                  <p className="text-sm text-white">{ai.fitnessRequirements}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Safety guidelines (from AI enhance) */}
+          {ai?.safetyGuidelines && ai.safetyGuidelines.length > 0 && (
+            <div className="rounded-2xl border border-zinc-800/50 bg-zinc-900/50 p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <ShieldAlert className="h-5 w-5 text-orange-500" />
+                <h2 className="text-base font-semibold text-white">Safety guidelines</h2>
+              </div>
+              <ul className="space-y-2">
+                {ai.safetyGuidelines.map((g, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-zinc-300">
+                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-orange-500 shrink-0" />
+                    {g}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Trip planning aids (AI, on-demand) — only useful pre-event with a destination */}
+          {!isCompleted && destinationAddress && (
+            <>
+              <PlacesOfInterest eventId={event.id} destination={destinationAddress} />
+              <AccommodationFinder eventId={event.id} destination={destinationAddress} startDate={startDateIso} />
+            </>
           )}
 
           {/* Safety */}
@@ -524,7 +639,19 @@ export default async function EventDetailPage({ params }: PageProps) {
                       isAuthenticated={!!session?.user}
                       isFull={isFull}
                       organizerSlug={event.organizer.slug || ""}
+                      initialStatus={
+                        myParticipation?.status === "WAITLISTED"
+                          ? "WAITLISTED"
+                          : myParticipation?.status === "PENDING"
+                            ? "PENDING"
+                            : "CONFIRMED"
+                      }
                     />
+                  )}
+                  {waitlistPosition !== null && (
+                    <p className="text-xs text-center text-amber-400">
+                      You&apos;re #{waitlistPosition} on the waitlist — we&apos;ll confirm you if a spot opens.
+                    </p>
                   )}
                   {myParticipation?.status === "CONFIRMED" && (
                     <Link href={`/events/${event.slug}/pass`}>
@@ -609,8 +736,18 @@ export default async function EventDetailPage({ params }: PageProps) {
                     <span className="text-sm font-semibold text-white">{event.organizer.name}</span>
                     {event.organizer.verified && <CheckCircle2 className="h-3.5 w-3.5 text-orange-500" />}
                   </div>
-                  <span className="text-xs text-zinc-500">
+                  <span className="text-xs text-zinc-500 flex items-center gap-1.5">
                     {event.organizer._count.organizedEvents} events
+                    {organizerRating !== null && (
+                      <>
+                        <span className="text-zinc-700">·</span>
+                        <span className="inline-flex items-center gap-0.5 text-amber-400">
+                          <Star className="h-3 w-3 fill-amber-400" />
+                          {organizerRating.toFixed(1)}
+                          <span className="text-zinc-500">({organizerRatingCount})</span>
+                        </span>
+                      </>
+                    )}
                   </span>
                 </div>
               </div>

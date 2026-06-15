@@ -7,8 +7,22 @@ import { Testimonials } from "@/components/landing/testimonials"
 import { CTA } from "@/components/landing/cta"
 import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
+import { getEvents, toCardEvent } from "@/app/(main)/events/page"
+import type { MockEvent } from "@/lib/mock-data"
 
-export default function HomePage() {
+// Public landing — keep it fresh but cacheable.
+export const revalidate = 300
+
+export default async function HomePage() {
+  // Real published events (no more mock data); fail soft to an empty preview.
+  let previewEvents: MockEvent[]
+  try {
+    const rows = await getEvents({ status: { in: ["PUBLISHED", "OPEN", "ACTIVE"] } }, 3)
+    previewEvents = rows.map(toCardEvent)
+  } catch {
+    previewEvents = []
+  }
+
   return (
     <>
       <Header />
@@ -17,7 +31,7 @@ export default function HomePage() {
         <div id="features">
           <Features />
         </div>
-        <LiveEventsPreview />
+        <LiveEventsPreview events={previewEvents} />
         <div id="how-it-works">
           <HowItWorks />
         </div>

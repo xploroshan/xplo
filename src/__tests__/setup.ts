@@ -73,6 +73,15 @@ vi.mock("@/lib/db", () => ({
       updateMany: vi.fn(),
       count: vi.fn(),
     },
+    eventType: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+    },
+    analyticsEvent: {
+      create: vi.fn(),
+      count: vi.fn(),
+      findMany: vi.fn(),
+    },
     message: {
       findFirst: vi.fn(),
       findMany: vi.fn(),
@@ -100,6 +109,7 @@ vi.mock("@/lib/db", () => ({
     },
     order: {
       findUnique: vi.fn(),
+      findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),

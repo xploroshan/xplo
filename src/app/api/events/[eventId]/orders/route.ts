@@ -16,6 +16,82 @@ const body = z.object({
   quantity: z.number().int().min(1).max(10).default(1),
 })
 
+// Organizer revenue view: list PAID orders + aggregates. Refunds are out of
+// scope here (no refund flow yet) — this is read-only reconciliation.
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ eventId: string }> }
+) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+  const { eventId } = await params
+
+  const event = await db.event.findUnique({
+    where: { id: eventId },
+    select: { organizerId: true },
+  })
+  if (!event) {
+    return NextResponse.json({ error: "Event not found" }, { status: 404 })
+  }
+  const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN"
+  if (event.organizerId !== session.user.id && !isAdmin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  const orders = await db.order.findMany({
+    where: { eventId, status: "PAID" },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      quantity: true,
+      amount: true,
+      platformFee: true,
+      currency: true,
+      createdAt: true,
+      razorpayPaymentId: true,
+      ticketType: { select: { name: true } },
+      user: { select: { name: true } },
+    },
+  })
+
+  let gross = 0
+  let fees = 0
+  let tickets = 0
+  const rows = orders.map((o) => {
+    const amount = Number(o.amount)
+    const fee = Number(o.platformFee)
+    gross += amount
+    fees += fee
+    tickets += o.quantity
+    return {
+      id: o.id,
+      buyer: o.user.name || "Rider",
+      tier: o.ticketType?.name ?? "—",
+      quantity: o.quantity,
+      amount,
+      platformFee: fee,
+      net: Math.round((amount - fee) * 100) / 100,
+      currency: o.currency,
+      paymentId: o.razorpayPaymentId,
+      createdAt: o.createdAt,
+    }
+  })
+
+  return NextResponse.json({
+    orders: rows,
+    summary: {
+      gross: Math.round(gross * 100) / 100,
+      fees: Math.round(fees * 100) / 100,
+      net: Math.round((gross - fees) * 100) / 100,
+      count: rows.length,
+      tickets,
+      currency: orders[0]?.currency ?? "INR",
+    },
+  })
+}
+
 // Begin a ticket purchase: validates availability, creates an Order, and (for
 // paid tiers) a Razorpay order for the checkout. Free tiers confirm instantly.
 export async function POST(

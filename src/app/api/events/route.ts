@@ -15,7 +15,11 @@ const createEventBody = z.object({
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().optional(),
   startLocationAddress: z.string().optional(),
+  startLocationLat: z.number().optional(),
+  startLocationLng: z.number().optional(),
   destinationAddress: z.string().optional(),
+  destinationLat: z.number().optional(),
+  destinationLng: z.number().optional(),
   capacity: z.number().int().positive().optional(),
   price: z.number().nonnegative().optional(),
   coverImage: z.string().url().optional(),
@@ -24,6 +28,9 @@ const createEventBody = z.object({
   assemblyPointAddress: z.string().optional(),
   assemblyPointTime: z.string().optional(),
   checklist: z.array(z.string().min(1).max(120)).max(30).optional(),
+  difficulty: z.enum(["beginner", "intermediate", "advanced", "expert"]).optional(),
+  // Structured AI enhance output (itinerary/safety/weather/fitness/duration).
+  aiAssessment: z.record(z.string(), z.unknown()).optional(),
 })
 
 async function uniqueSlug(base: string): Promise<string> {
@@ -123,10 +130,20 @@ export async function POST(request: Request) {
         startDate: new Date(data.startDate),
         endDate: data.endDate ? new Date(data.endDate) : null,
         startLocation: data.startLocationAddress
-          ? { address: data.startLocationAddress }
+          ? {
+              address: data.startLocationAddress,
+              ...(data.startLocationLat != null && data.startLocationLng != null
+                ? { lat: data.startLocationLat, lng: data.startLocationLng }
+                : {}),
+            }
           : undefined,
         destination: data.destinationAddress
-          ? { address: data.destinationAddress }
+          ? {
+              address: data.destinationAddress,
+              ...(data.destinationLat != null && data.destinationLng != null
+                ? { lat: data.destinationLat, lng: data.destinationLng }
+                : {}),
+            }
           : undefined,
         capacity: data.capacity,
         price: data.price,
@@ -138,6 +155,8 @@ export async function POST(request: Request) {
             ? { address: data.assemblyPointAddress, time: data.assemblyPointTime }
             : undefined,
         checklist: data.checklist && data.checklist.length > 0 ? data.checklist : undefined,
+        difficulty: data.difficulty,
+        aiAssessment: data.aiAssessment as object | undefined,
         // Publish straight to OPEN so it's immediately shareable and joinable.
         status: "OPEN",
       },

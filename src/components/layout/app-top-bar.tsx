@@ -2,10 +2,10 @@
 
 import { usePathname } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { Search } from "lucide-react"
 import Link from "next/link"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { NotificationBell } from "./notification-bell"
+import { CommandPalette } from "./command-palette"
 
 const pageTitles: Record<string, string> = {
   "/events": "Discover",
@@ -33,13 +33,7 @@ export function AppTopBar() {
       <div className="flex items-center justify-between h-full px-4 lg:px-6">
         <h1 className="text-lg font-semibold text-white">{title}</h1>
 
-        <div className="hidden md:flex items-center gap-2 rounded-xl bg-zinc-800/50 border border-zinc-700/50 px-3 py-1.5 text-sm text-zinc-500 cursor-pointer hover:border-zinc-600 transition-colors">
-          <Search className="h-3.5 w-3.5" />
-          <span>Search events...</span>
-          <kbd className="ml-4 px-1.5 py-0.5 rounded bg-zinc-700/50 text-[10px] font-mono text-zinc-400">
-            ⌘K
-          </kbd>
-        </div>
+        <CommandPalette />
 
         <div className="flex items-center gap-3">
           <NotificationBell />

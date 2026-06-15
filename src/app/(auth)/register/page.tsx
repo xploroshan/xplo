@@ -3,6 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { signIn } from "next-auth/react"
 import { Compass, Mail, Lock, User, Eye, EyeOff, MapPin, Link2, Users, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -45,7 +46,19 @@ export default function RegisterPage() {
       if (!res.ok) {
         setError(data.error || "Registration failed")
       } else {
-        router.push("/login?registered=true")
+        // Auto sign-in so we can drop the new user straight into onboarding;
+        // fall back to the login page if that doesn't take.
+        const signInRes = await signIn("credentials", {
+          email: form.email,
+          password: form.password,
+          redirect: false,
+        })
+        if (signInRes?.error) {
+          router.push("/login?registered=true")
+        } else {
+          router.push("/welcome")
+          router.refresh()
+        }
       }
     } catch {
       setError("Something went wrong. Please try again.")

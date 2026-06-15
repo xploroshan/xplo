@@ -51,6 +51,9 @@ export function LiveMap({ eventId, isOrganizer, initialStatus, realtime }: LiveM
   const [geoError, setGeoError] = useState<string | null>(null)
   const [sosState, setSosState] = useState<"idle" | "confirm" | "sent">("idle")
   const [busy, setBusy] = useState(false)
+  const [showConsent, setShowConsent] = useState(false)
+
+  const CONSENT_KEY = "hykrz:gps-consent"
 
   // ── Map plumbing ──────────────────────────────────────────────────────────
 
@@ -215,6 +218,24 @@ export function LiveMap({ eventId, isOrganizer, initialStatus, realtime }: LiveM
     setSharing(true)
   }
 
+  // Gate the first share behind an explicit consent explainer (who sees the
+  // location + battery note). Remembered per browser so it only shows once.
+  function requestShare() {
+    const consented = typeof window !== "undefined" && localStorage.getItem(CONSENT_KEY) === "1"
+    if (consented) startSharing()
+    else setShowConsent(true)
+  }
+
+  function confirmConsent() {
+    try {
+      localStorage.setItem(CONSENT_KEY, "1")
+    } catch {
+      /* ignore */
+    }
+    setShowConsent(false)
+    startSharing()
+  }
+
   useEffect(() => () => stopSharing(), [stopSharing])
 
   // ── Organizer ride controls ───────────────────────────────────────────────
@@ -291,13 +312,38 @@ export function LiveMap({ eventId, isOrganizer, initialStatus, realtime }: LiveM
                 <LocateFixed className="h-3.5 w-3.5 animate-pulse" /> Sharing — stop
               </Button>
             ) : (
-              <Button size="sm" variant="glow" className="gap-1.5" onClick={startSharing}>
+              <Button size="sm" variant="glow" className="gap-1.5" onClick={requestShare}>
                 <LocateFixed className="h-3.5 w-3.5" /> Share my location
               </Button>
             )
           )}
         </div>
       </div>
+
+      {/* One-time location-sharing consent */}
+      {showConsent && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4" onClick={() => setShowConsent(false)}>
+          <div className="w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-950 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-3">
+              <LocateFixed className="h-5 w-5 text-orange-500" />
+              <h3 className="text-base font-semibold text-white">Share your live location?</h3>
+            </div>
+            <ul className="space-y-2 text-sm text-zinc-400 mb-5">
+              <li>· The organizer and other riders on this ride will see your position on the map in real time.</li>
+              <li>· Sharing stops when you tap &ldquo;stop&rdquo;, leave this page, or the ride ends.</li>
+              <li>· Continuous GPS uses more battery — keep your phone charged.</li>
+            </ul>
+            <div className="flex gap-2">
+              <Button variant="glow" className="flex-1 rounded-xl" onClick={confirmConsent}>
+                I understand — share
+              </Button>
+              <Button variant="outline" className="rounded-xl border-zinc-700" onClick={() => setShowConsent(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {geoError && <p className="text-xs text-red-400">{geoError}</p>}
 
