@@ -240,7 +240,7 @@ export function AppSidebar() {
       </aside>
 
       {/* Mobile bottom bar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-800/50 bg-zinc-950/90 backdrop-blur-xl safe-area-bottom">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-800/50 bg-zinc-950 safe-area-bottom">
         <div className="flex items-center justify-around h-16">
           {mobileNavItems.map((item) => {
             const isActive = !item.isCreate && (pathname === item.href || pathname.startsWith(item.href + "/"))

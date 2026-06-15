@@ -20,8 +20,27 @@ export function FeaturedCarousel({ events }: { events: MockEvent[] }) {
   }
 
   useEffect(() => {
-    const timer = setInterval(next, 5000)
-    return () => clearInterval(timer)
+    let timer: ReturnType<typeof setInterval> | undefined
+
+    const start = () => {
+      if (timer) return
+      timer = setInterval(next, 5000)
+    }
+    const stop = () => {
+      if (timer) clearInterval(timer)
+      timer = undefined
+    }
+    const onVisibility = () => {
+      if (document.hidden) stop()
+      else start()
+    }
+
+    start()
+    document.addEventListener("visibilitychange", onVisibility)
+    return () => {
+      stop()
+      document.removeEventListener("visibilitychange", onVisibility)
+    }
   }, [next])
 
   if (events.length === 0) return null

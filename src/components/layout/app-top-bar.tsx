@@ -29,7 +29,7 @@ export function AppTopBar() {
     : "?"
 
   return (
-    <header className="sticky top-0 z-40 h-14 border-b border-zinc-800/50 bg-zinc-950/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 h-14 border-b border-zinc-800/50 bg-zinc-950/95">
       <div className="flex items-center justify-between h-full px-4 lg:px-6">
         <h1 className="text-lg font-semibold text-white">{title}</h1>
 
