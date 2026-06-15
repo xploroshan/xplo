@@ -74,6 +74,7 @@ export function EventRegisterButton({
   if (isRegistered) {
     return (
       <Button
+        data-testid="rsvp-button"
         variant="outline"
         className="w-full rounded-xl border-green-500/30 text-green-400 hover:border-red-500/30 hover:text-red-400 hover:bg-red-500/5 group"
         onClick={handleRegister}
@@ -92,6 +93,7 @@ export function EventRegisterButton({
 
   return (
     <Button
+      data-testid="rsvp-button"
       variant="glow"
       className="w-full rounded-xl"
       onClick={handleRegister}

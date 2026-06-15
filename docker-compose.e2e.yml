@@ -1,0 +1,20 @@
+# Local Postgres for running the E2E suite on a dev machine.
+#
+#   docker compose -f docker-compose.e2e.yml up -d
+#   export DATABASE_URL="postgresql://postgres:postgres@localhost:5433/hykrz_e2e?schema=public"
+#   npm run build && npm run db:seed:e2e && npm run e2e
+#
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hykrz_e2e
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 20

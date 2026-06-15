@@ -52,50 +52,27 @@ test.describe("Performance Tests", () => {
   })
 
   test.describe("Interactive Responsiveness", () => {
-    test("filter dropdown opens within 500ms", async ({ page }) => {
+    test("typing in the search box is responsive", async ({ page }) => {
       await page.goto("/events")
-      await page.waitForTimeout(1_000)
+      const search = page.getByPlaceholder(/search events/i)
+      await expect(search).toBeVisible()
 
       const start = Date.now()
-      await page.getByText("Select City").click()
-      await expect(page.getByPlaceholder(/search any city worldwide/i)).toBeVisible()
+      await search.fill("ride")
       const duration = Date.now() - start
       expect(duration).toBeLessThan(500)
     })
 
-    test("city search results appear within 500ms", async ({ page }) => {
+    test("category chip navigation applies quickly", async ({ page }) => {
       await page.goto("/events")
-      await page.waitForTimeout(1_000)
-      await page.getByText("Select City").click()
-      const searchInput = page.getByPlaceholder(/search any city worldwide/i)
+      const chip = page.getByRole("link", { name: /motorcycle/i }).first()
+      await expect(chip).toBeVisible()
 
       const start = Date.now()
-      await searchInput.fill("London")
-      await expect(page.getByText("United Kingdom")).toBeVisible()
+      await chip.click()
+      await expect(page).toHaveURL(/type=motorcycle-rides/)
       const duration = Date.now() - start
-      expect(duration).toBeLessThan(500)
-    })
-
-    test("event type dropdown opens quickly", async ({ page }) => {
-      await page.goto("/events")
-      await page.waitForTimeout(1_000)
-
-      const start = Date.now()
-      await page.getByText("Event Type").click()
-      await expect(page.getByText("All Types")).toBeVisible()
-      const duration = Date.now() - start
-      expect(duration).toBeLessThan(500)
-    })
-
-    test("sorting changes apply quickly", async ({ page }) => {
-      await page.goto("/events")
-      await page.waitForTimeout(1_500)
-
-      const start = Date.now()
-      await page.locator("button").filter({ hasText: /^rating$/ }).click()
-      await page.waitForTimeout(100)
-      const duration = Date.now() - start
-      expect(duration).toBeLessThan(1_000)
+      expect(duration).toBeLessThan(3_000)
     })
   })
 
@@ -218,10 +195,10 @@ test.describe("Responsive Design Tests", () => {
       await expect(page.getByText("Discover Adventures Near You")).toBeVisible({ timeout: 10_000 })
     })
 
-    test("filter bar stacks vertically on mobile", async ({ page }) => {
+    test("search + category chips render on mobile", async ({ page }) => {
       await page.goto("/events")
-      await expect(page.getByText("Select City")).toBeVisible()
-      await expect(page.getByText("Event Type")).toBeVisible()
+      await expect(page.getByPlaceholder(/search events/i)).toBeVisible()
+      await expect(page.getByRole("link", { name: "All" }).first()).toBeVisible()
     })
 
     test("event cards render in single column on mobile", async ({ page }) => {
@@ -232,10 +209,10 @@ test.describe("Responsive Design Tests", () => {
       expect(count).toBeGreaterThan(0)
     })
 
-    test("sidebar is hidden on mobile", async ({ page }) => {
+    test("desktop sidebar is hidden on mobile", async ({ page }) => {
       await page.goto("/events")
-      const platformStats = page.getByText("Platform Stats")
-      const isVisible = await platformStats.isVisible().catch(() => false)
+      const sidebar = page.getByRole("heading", { name: "Events by City" })
+      const isVisible = await sidebar.isVisible().catch(() => false)
       expect(isVisible).toBeFalsy()
     })
 
@@ -276,8 +253,7 @@ test.describe("Responsive Design Tests", () => {
 
     test("events page shows sidebar on large desktop", async ({ page }) => {
       await page.goto("/events")
-      await expect(page.getByText("Platform Stats")).toBeVisible({ timeout: 10_000 })
-      await expect(page.getByRole("heading", { name: "Events by City" })).toBeVisible()
+      await expect(page.getByRole("heading", { name: "Events by City" })).toBeVisible({ timeout: 10_000 })
     })
 
     test("event cards render in three columns on desktop", async ({ page }) => {

@@ -113,6 +113,7 @@ export function WelcomeFlow({
           <MapPin className="h-4 w-4 text-orange-500" /> Your city
         </h2>
         <Input
+          data-testid="welcome-city"
           value={city}
           onChange={(e) => setCity(e.target.value)}
           placeholder="e.g. Bangalore"
@@ -190,7 +191,7 @@ export function WelcomeFlow({
         <button onClick={() => finish(true)} disabled={saving} className="text-sm text-zinc-500 hover:text-zinc-300">
           Skip for now
         </button>
-        <Button variant="glow" className="rounded-xl gap-2" onClick={() => finish(false)} disabled={saving}>
+        <Button data-testid="welcome-continue" variant="glow" className="rounded-xl gap-2" onClick={() => finish(false)} disabled={saving}>
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
           Start exploring
         </Button>

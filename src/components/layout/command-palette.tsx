@@ -61,6 +61,7 @@ export function CommandPalette() {
       {/* Trigger — same look as before, now actually interactive */}
       <button
         type="button"
+        data-testid="command-palette-trigger"
         onClick={() => setOpen(true)}
         className="hidden md:flex items-center gap-2 rounded-xl bg-zinc-800/50 border border-zinc-700/50 px-3 py-1.5 text-sm text-zinc-500 cursor-pointer hover:border-zinc-600 hover:text-zinc-300 transition-colors"
       >
@@ -82,6 +83,7 @@ export function CommandPalette() {
               <Search className="h-4 w-4 text-zinc-500 shrink-0" />
               <input
                 ref={inputRef}
+                data-testid="command-palette-input"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search events by name or destination..."

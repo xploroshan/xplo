@@ -118,6 +118,7 @@ export function ManageDashboard({
         {tabs.map((t) => (
           <button
             key={t.key}
+            data-testid={`manage-tab-${t.key}`}
             onClick={() => setTab(t.key)}
             className={cn(
               "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
