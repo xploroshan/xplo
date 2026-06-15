@@ -24,6 +24,9 @@ const createEventBody = z.object({
   assemblyPointAddress: z.string().optional(),
   assemblyPointTime: z.string().optional(),
   checklist: z.array(z.string().min(1).max(120)).max(30).optional(),
+  difficulty: z.enum(["beginner", "intermediate", "advanced", "expert"]).optional(),
+  // Structured AI enhance output (itinerary/safety/weather/fitness/duration).
+  aiAssessment: z.record(z.string(), z.unknown()).optional(),
 })
 
 async function uniqueSlug(base: string): Promise<string> {
@@ -138,6 +141,8 @@ export async function POST(request: Request) {
             ? { address: data.assemblyPointAddress, time: data.assemblyPointTime }
             : undefined,
         checklist: data.checklist && data.checklist.length > 0 ? data.checklist : undefined,
+        difficulty: data.difficulty,
+        aiAssessment: data.aiAssessment as object | undefined,
         // Publish straight to OPEN so it's immediately shareable and joinable.
         status: "OPEN",
       },

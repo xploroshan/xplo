@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
@@ -46,6 +46,24 @@ export default function CreateEventPage() {
   const [userOrgs, setUserOrgs] = useState<UserOrg[]>([])
   const [coverImage, setCoverImage] = useState<string | null>(null)
   const [aiSuggestions, setAiSuggestions] = useState<Array<{ key: string; label: string; value: string | string[] }> | null>(null)
+  const [aiError, setAiError] = useState<string | null>(null)
+
+  // Controlled so AI suggestions can populate them; the rest stay uncontrolled.
+  const [title, setTitle] = useState("")
+  const [eventType, setEventType] = useState("")
+  const [description, setDescription] = useState("")
+  const [checklist, setChecklist] = useState("")
+  const [difficulty, setDifficulty] = useState("")
+  // Structured AI extras (itinerary/safety/weather/fitness/duration) → aiAssessment.
+  const [aiExtras, setAiExtras] = useState<Record<string, unknown> | null>(null)
+  const formRef = useRef<HTMLFormElement>(null)
+
+  // Map an AI enhance key onto the matching form field.
+  function applySuggestion(key: string, value: string | string[]) {
+    if (key === "description" && typeof value === "string") setDescription(value)
+    else if (key === "equipmentChecklist" && Array.isArray(value)) setChecklist(value.join("\n"))
+    else if (key === "difficulty" && typeof value === "string") setDifficulty(value)
+  }
 
   useEffect(() => {
     fetch("/api/organizations?mine=true")
@@ -58,15 +76,15 @@ export default function CreateEventPage() {
     e.preventDefault()
     setError(null)
     const fd = new FormData(e.currentTarget)
-    const title = (fd.get("title") as string)?.trim()
-    const eventTypeSlug = fd.get("eventType") as string | null
+    const titleVal = title.trim()
+    const eventTypeSlug = eventType || null
     const startDate = fd.get("startDate") as string | null
 
     if (!eventTypeSlug) {
       setError("Please pick an event type.")
       return
     }
-    if (!title || !startDate) {
+    if (!titleVal || !startDate) {
       setError("Title and start date are required.")
       return
     }
@@ -87,10 +105,10 @@ export default function CreateEventPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title,
+          title: titleVal,
           eventTypeSlug,
           startDate,
-          description: str("description"),
+          description: description.trim() || undefined,
           endDate: str("endDate"),
           startLocationAddress: str("startLocation"),
           destinationAddress: str("destination"),
@@ -101,7 +119,9 @@ export default function CreateEventPage() {
           organizationId: selectedOrgId ?? undefined,
           assemblyPointAddress: str("assemblyPoint"),
           assemblyPointTime: str("assemblyTime"),
-          checklist: ((fd.get("checklist") as string) || "")
+          difficulty: difficulty || undefined,
+          aiAssessment: aiExtras ?? undefined,
+          checklist: checklist
             .split("\n")
             .map((l) => l.trim())
             .filter(Boolean),
@@ -139,7 +159,7 @@ export default function CreateEventPage() {
         Publish in under a minute — you&apos;ll get a shareable link to drop in your bio.
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
         {userOrgs.length > 0 && (
           <Card className="border-zinc-800 bg-zinc-900/50">
             <CardContent className="pt-6">
@@ -157,6 +177,8 @@ export default function CreateEventPage() {
               <label className="text-sm font-medium text-zinc-300">Event Title</label>
               <Input
                 name="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Weekend Ride to Goa"
                 required
                 className="bg-zinc-800/50 border-zinc-700 text-white placeholder:text-zinc-500 focus-visible:ring-orange-500"
@@ -171,7 +193,14 @@ export default function CreateEventPage() {
                     key={type.slug}
                     className="flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-800/30 p-3 cursor-pointer hover:border-orange-500/50 transition-colors has-[:checked]:border-orange-500 has-[:checked]:bg-orange-500/10"
                   >
-                    <input type="radio" name="eventType" value={type.slug} className="sr-only" />
+                    <input
+                      type="radio"
+                      name="eventType"
+                      value={type.slug}
+                      checked={eventType === type.slug}
+                      onChange={(e) => setEventType(e.target.value)}
+                      className="sr-only"
+                    />
                     <span className="text-xs font-medium text-zinc-300">{type.name}</span>
                   </label>
                 ))}
@@ -182,35 +211,88 @@ export default function CreateEventPage() {
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-zinc-300">Description</label>
                 <AiEnhanceButton
+                  disabled={!title.trim() || !eventType}
+                  getFormData={() => {
+                    const fd = new FormData(formRef.current!)
+                    const n = (k: string) => {
+                      const v = fd.get(k)
+                      const x = v ? Number(v) : NaN
+                      return Number.isFinite(x) ? x : undefined
+                    }
+                    return {
+                      title: title.trim(),
+                      eventType,
+                      startLocation: (fd.get("startLocation") as string) || undefined,
+                      destination: (fd.get("destination") as string) || undefined,
+                      startDate: (fd.get("startDate") as string) || undefined,
+                      endDate: (fd.get("endDate") as string) || undefined,
+                      capacity: n("capacity"),
+                      price: n("price"),
+                    }
+                  }}
+                  onError={(msg) => setAiError(msg)}
                   onResult={(result) => {
+                    setAiError(null)
+                    // Stash structured extras for submission as aiAssessment.
+                    setAiExtras(result)
+                    // Build display suggestions; itinerary objects → readable lines.
+                    const labelize = (k: string) =>
+                      k.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase())
                     const suggestions = Object.entries(result)
-                      .filter(([, v]) => v !== undefined && v !== null)
-                      .map(([key, value]) => ({
-                        key,
-                        label: key.replace(/([A-Z])/g, " $1").replace(/^./, (s) => s.toUpperCase()),
-                        value: value as string | string[],
-                      }))
+                      .filter(([, v]) => v !== undefined && v !== null && (!Array.isArray(v) || v.length > 0))
+                      .map(([key, value]) => {
+                        let display: string | string[]
+                        if (key === "itinerary" && Array.isArray(value)) {
+                          display = (value as Array<{ time?: string; activity?: string }>).map(
+                            (it) => [it.time, it.activity].filter(Boolean).join(" — ")
+                          )
+                        } else {
+                          display = value as string | string[]
+                        }
+                        return { key, label: labelize(key), value: display }
+                      })
                     setAiSuggestions(suggestions)
                   }}
-                  formData={{}}
                 />
               </div>
               <textarea
                 name="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe your event..."
                 rows={4}
                 className="w-full rounded-lg bg-zinc-800/50 border border-zinc-700 text-white placeholder:text-zinc-500 p-3 text-sm outline-none focus:ring-2 focus:ring-orange-500/50 transition-all resize-none"
               />
             </div>
 
+            {aiError && (
+              <p className="text-xs text-red-400">{aiError}</p>
+            )}
+
             {aiSuggestions && (
               <AiSuggestionsPanel
                 suggestions={aiSuggestions}
-                onApply={() => {}}
-                onApplyAll={() => {}}
+                onApply={applySuggestion}
+                onApplyAll={() => aiSuggestions.forEach((s) => applySuggestion(s.key, s.value))}
                 onDismiss={() => setAiSuggestions(null)}
               />
             )}
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-300">Difficulty</label>
+              <select
+                name="difficulty"
+                value={difficulty}
+                onChange={(e) => setDifficulty(e.target.value)}
+                className="w-full rounded-lg bg-zinc-800/50 border border-zinc-700 text-white text-sm px-3 py-2 outline-none focus:ring-2 focus:ring-orange-500/50"
+              >
+                <option value="">Not specified</option>
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+                <option value="expert">Expert</option>
+              </select>
+            </div>
           </CardContent>
         </Card>
 
@@ -359,6 +441,8 @@ export default function CreateEventPage() {
               </label>
               <textarea
                 name="checklist"
+                value={checklist}
+                onChange={(e) => setChecklist(e.target.value)}
                 rows={4}
                 placeholder={"Full tank of fuel\nValid licence & RC\nHelmet & riding gear\nRain jacket"}
                 className="w-full rounded-xl bg-zinc-800/50 border border-zinc-700 text-sm text-white placeholder:text-zinc-500 px-3 py-2 outline-none focus:ring-2 focus:ring-orange-500/40"

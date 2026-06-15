@@ -2,10 +2,11 @@
 
 import { motion } from "framer-motion"
 import { EventCard } from "@/components/events/event-card"
-import { MOCK_EVENTS } from "@/lib/mock-data"
+import type { MockEvent } from "@/lib/mock-data"
 
-export function LiveEventsPreview() {
-  const previewEvents = MOCK_EVENTS.filter((e) => e.status === "OPEN").slice(0, 3)
+export function LiveEventsPreview({ events }: { events: MockEvent[] }) {
+  const previewEvents = events.slice(0, 3)
+  if (previewEvents.length === 0) return null
 
   return (
     <section className="py-24 px-4 sm:px-6 relative overflow-hidden">

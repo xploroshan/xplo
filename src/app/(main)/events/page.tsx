@@ -38,11 +38,11 @@ interface PageProps {
 
 type DbEvent = Awaited<ReturnType<typeof getEvents>>[number]
 
-async function getEvents(where: object) {
+export async function getEvents(where: object, take = 48) {
   return db.event.findMany({
     where,
     orderBy: { startDate: "asc" },
-    take: 48,
+    take,
     select: {
       id: true,
       title: true,
@@ -69,7 +69,7 @@ async function getEvents(where: object) {
 }
 
 // Adapt a DB event to the shape EventCard renders (reuses the polished card).
-function toCardEvent(e: DbEvent): MockEvent {
+export function toCardEvent(e: DbEvent): MockEvent {
   const organizer: MockOrganizer = {
     id: e.organizer.id,
     name: e.organizer.name || "Organizer",
