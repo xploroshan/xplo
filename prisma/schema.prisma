@@ -757,3 +757,48 @@ model AnalyticsEvent {
   @@index([organizerId])
   @@index([createdAt])
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Microsite content (PR2): tenant-scoped blogs + guidelines. Owner is either an
+// Organization or an individual organizer (User) — exactly one of the FK columns
+// is set. Scoped manually in queries (like Event.organizerId/organizationId), so
+// no Prisma relation back-refs are needed.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+model BlogPost {
+  id             String    @id @default(cuid())
+  organizationId String?
+  userId         String?
+  title          String
+  slug           String
+  excerpt        String?   @db.VarChar(300)
+  content        String    @db.Text
+  coverImage     String?
+  tags           String[]
+  status         String    @default("draft") // "draft" | "published"
+  publishedAt    DateTime?
+  authorId       String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([organizationId, slug])
+  @@unique([userId, slug])
+  @@index([organizationId, status, publishedAt])
+  @@index([userId, status, publishedAt])
+}
+
+model Guideline {
+  id             String   @id @default(cuid())
+  organizationId String?
+  userId         String?
+  title          String
+  content        String   @db.Text
+  category       String?
+  icon           String?
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([organizationId, sortOrder])
+  @@index([userId, sortOrder])
+}
