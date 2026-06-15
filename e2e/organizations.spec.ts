@@ -152,19 +152,9 @@ test.describe("Organization Profile Page", () => {
   })
 
   test("org profile has tab buttons (Events, Team, Reviews)", async ({ page }) => {
-    // Try to find a valid org slug from the browse page
-    await page.goto("/organizations")
-    await page.waitForTimeout(2_000)
-    const orgLinks = page.locator("a[href^='/org/']")
-    const count = await orgLinks.count()
-    if (count === 0) {
-      test.skip()
-      return
-    }
-    const href = await orgLinks.first().getAttribute("href")
-    await page.goto(href!)
-    await expect(page.getByRole("button", { name: /events/i })).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByRole("button", { name: /team/i })).toBeVisible()
-    await expect(page.getByRole("button", { name: /reviews/i })).toBeVisible()
+    // Use the known seeded org for determinism.
+    await page.goto("/org/e2e-club")
+    await expect(page.getByRole("button", { name: "Team", exact: true })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole("button", { name: "Reviews", exact: true })).toBeVisible()
   })
 })

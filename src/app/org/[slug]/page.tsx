@@ -84,7 +84,10 @@ export default function OrgProfilePage() {
         const res = await fetch(`/api/organizations/${slug}`)
         if (!res.ok) throw new Error("Organization not found")
         const data = await res.json()
-        setOrg(data)
+        // The API exposes the effective rating as `rating`; the UI reads
+        // `avgRating`. Map it (and coalesce to null) so the rating displays and
+        // never arrives as undefined.
+        setOrg({ ...data, avgRating: data.avgRating ?? data.rating ?? null })
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load")
       } finally {

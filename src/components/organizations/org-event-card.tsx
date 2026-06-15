@@ -164,7 +164,7 @@ export function OrgEventCard({ event, orgLogo, orgName, index = 0 }: OrgEventCar
             {/* Footer: Rating & Participants */}
             <div className="flex items-center justify-between border-t border-zinc-800 pt-3">
               <div className="flex items-center gap-1 text-xs text-zinc-400">
-                {event.avgRating !== null ? (
+                {event.avgRating != null ? (
                   <>
                     <Star className="h-3.5 w-3.5 fill-orange-500 text-orange-500" />
                     <span className="font-medium text-white">{event.avgRating.toFixed(1)}</span>

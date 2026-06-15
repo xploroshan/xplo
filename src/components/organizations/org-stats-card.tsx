@@ -27,7 +27,7 @@ export function OrgStatsCard({ events, members, rating, participants }: OrgStats
   const stats = [
     { label: "Events", value: events, icon: Calendar, color: "text-orange-500", bg: "bg-orange-500/10" },
     { label: "Members", value: members, icon: Users, color: "text-blue-500", bg: "bg-blue-500/10" },
-    { label: "Rating", value: rating !== null ? rating.toFixed(1) : "N/A", icon: Star, color: "text-yellow-500", bg: "bg-yellow-500/10" },
+    { label: "Rating", value: rating != null ? rating.toFixed(1) : "N/A", icon: Star, color: "text-yellow-500", bg: "bg-yellow-500/10" },
     { label: "Participants", value: participants, icon: UserCheck, color: "text-green-500", bg: "bg-green-500/10" },
   ]
 
