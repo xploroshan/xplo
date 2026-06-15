@@ -107,8 +107,6 @@ export function AiAssistant() {
             className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/25 flex items-center justify-center cursor-pointer"
           >
             <Sparkles className="h-6 w-6" />
-            {/* Pulse ring */}
-            <span className="absolute inset-0 rounded-full bg-orange-500/40 animate-ping" />
           </motion.button>
         )}
       </AnimatePresence>

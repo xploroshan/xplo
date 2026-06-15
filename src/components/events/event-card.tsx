@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { motion } from "framer-motion"
 import { MapPin, Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -25,10 +24,9 @@ export function EventCard({ event, index = 0 }: { event: MockEvent; index?: numb
   const priceDisplay = event.price > 0 ? `₹${event.price.toLocaleString()}` : "Free"
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.05 }}
+    <div
+      className="animate-fade-up"
+      style={{ animationDelay: `${Math.min(index * 50, 400)}ms` }}
     >
       <Link href={`/events/${event.slug}`} className="block group">
         <div
@@ -173,6 +171,6 @@ export function EventCard({ event, index = 0 }: { event: MockEvent; index?: numb
           </div>
         </div>
       </Link>
-    </motion.div>
+    </div>
   )
 }

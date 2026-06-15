@@ -9,10 +9,11 @@ import Link from "next/link"
 export function Hero() {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Drifting gradient orbs — transform-only animation, cheap to composite */}
+      {/* Static gradient orbs — animating a 128px-blur layer forces constant GPU
+          repaints, so we keep the look but drop the motion. */}
       <div className="absolute inset-0 bg-[#0a0a0a]">
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-orange-500/20 rounded-full blur-[128px] animate-float will-change-transform" />
-        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-amber-500/15 rounded-full blur-[128px] animate-float-slow will-change-transform" />
+        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-orange-500/20 rounded-full blur-[128px]" />
+        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-amber-500/15 rounded-full blur-[128px]" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-orange-600/10 rounded-full blur-[128px]" />
       </div>
 
@@ -51,7 +52,7 @@ export function Hero() {
           <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight">
             <span className="text-white">Never Ride</span>
             <br />
-            <span className="text-gradient animate-gradient-x">
+            <span className="text-gradient">
               Alone Again
             </span>
           </h1>
