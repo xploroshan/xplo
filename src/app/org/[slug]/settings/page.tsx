@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
+import { MicrositeFields } from "@/components/site/microsite-fields"
 
 interface OrgSettings {
   name: string
@@ -25,6 +26,9 @@ interface OrgSettings {
   city: string
   logo: string
   banner: string
+  subdomain: string
+  themeColor: string
+  tagline: string
   socialLinks: {
     instagram?: string
     twitter?: string
@@ -44,6 +48,9 @@ export default function OrgSettingsPage() {
     city: "",
     logo: "",
     banner: "",
+    subdomain: "",
+    themeColor: "",
+    tagline: "",
     socialLinks: {},
   })
   const [loading, setLoading] = useState(true)
@@ -74,6 +81,9 @@ export default function OrgSettingsPage() {
           city: data.city ?? "",
           logo: data.logo ?? "",
           banner: data.banner ?? "",
+          subdomain: data.subdomain ?? "",
+          themeColor: data.themeColor ?? "",
+          tagline: data.tagline ?? "",
           socialLinks: data.socialLinks ?? {},
         })
       } catch {
@@ -240,6 +250,22 @@ export default function OrgSettingsPage() {
                   className="border-zinc-700 bg-zinc-800 text-white placeholder:text-zinc-500"
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Microsite */}
+          <Card className="border-zinc-800 bg-zinc-900/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-white">
+                <Globe className="h-5 w-5 text-orange-500" />
+                Microsite
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MicrositeFields
+                value={{ subdomain: form.subdomain, themeColor: form.themeColor, tagline: form.tagline }}
+                onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+              />
             </CardContent>
           </Card>
 
