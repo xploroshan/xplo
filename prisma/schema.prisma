@@ -40,6 +40,9 @@ model User {
   lockedUntil         DateTime?
   emergencyContacts Json? // FR-4.12 SOS contacts
   slug          String?   @unique  // URL slug for /@slug organizer profiles
+  subdomain     String?   @unique  // Microsite host label: <subdomain>.hykrz.com
+  themeColor    String?            // Brand accent hex (#rrggbb) for the microsite
+  tagline       String?   @db.VarChar(160) // Microsite hero tagline
   socialLinks   Json?              // { instagram?, youtube?, whatsapp?, website? }
   aiPreferences Json?              // { experienceLevel, fitnessLevel, preferredDifficulty }
   createdAt     DateTime  @default(now())
@@ -652,6 +655,9 @@ model Organization {
   id            String    @id @default(cuid())
   name          String
   slug          String    @unique
+  subdomain     String?   @unique  // Microsite host label: <subdomain>.hykrz.com
+  themeColor    String?            // Brand accent hex (#rrggbb) for the microsite
+  tagline       String?   @db.VarChar(160) // Microsite hero tagline
   logo          String?
   banner        String?
   description   String?   @db.Text

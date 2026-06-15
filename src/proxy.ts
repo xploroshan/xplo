@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { subdomainFromHost } from "@/lib/subdomain"
 
 const protectedRoutes = ["/events/create", "/messages", "/profile", "/feed"]
 const adminRoutes = ["/admin"]
 const authRoutes = ["/login", "/register"]
 
-export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl
-  const response = NextResponse.next()
-
-  // Security headers
+function withSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set("X-Frame-Options", "DENY")
   response.headers.set("X-Content-Type-Options", "nosniff")
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
@@ -22,6 +19,23 @@ export function proxy(request: NextRequest) {
     "Strict-Transport-Security",
     "max-age=63072000; includeSubDomains; preload"
   )
+  return response
+}
+
+export function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // Tenant microsites: `<label>.hykrz.com/<path>` → render `/s/<label>/<path>`.
+  // Pure string rewrite (tenant resolution + 404 happens in s/[tenant]/layout).
+  // Skip API and already-rewritten paths so they hit the real handlers.
+  const label = subdomainFromHost(request.headers.get("host"))
+  if (label && !pathname.startsWith("/s/") && !pathname.startsWith("/api")) {
+    const url = request.nextUrl.clone()
+    url.pathname = `/s/${label}${pathname === "/" ? "" : pathname}`
+    return withSecurityHeaders(NextResponse.rewrite(url))
+  }
+
+  const response = withSecurityHeaders(NextResponse.next())
 
   // Check authentication via session token cookie
   const sessionToken =

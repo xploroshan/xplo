@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { sanitizeInput } from "@/lib/sanitize"
 import { updateOrganizationSchema } from "@/lib/validations/organization"
+import { subdomainAvailable } from "@/lib/tenant"
 import { getEffectiveRating } from "@/lib/ratings"
 // getEffectiveRating(calculated, override, locked) => number | null
 
@@ -86,6 +87,9 @@ export async function GET(
       slug: org.slug,
       logo: org.logo,
       banner: org.banner,
+      subdomain: org.subdomain,
+      themeColor: org.themeColor,
+      tagline: org.tagline,
       description: org.description,
       website: org.website,
       socialLinks: org.socialLinks,
@@ -171,6 +175,18 @@ export async function PATCH(
     if (data.description !== undefined) updateData.description = sanitizeInput(data.description)
     if (data.website !== undefined) updateData.website = data.website || null
     if (data.city !== undefined) updateData.city = data.city || null
+    if (data.themeColor !== undefined) updateData.themeColor = data.themeColor || null
+    if (data.tagline !== undefined) updateData.tagline = data.tagline ? sanitizeInput(data.tagline) : null
+    // Subdomain claim — validate availability across both tenant tables.
+    if (data.subdomain !== undefined) {
+      if (data.subdomain === null || data.subdomain === "") {
+        updateData.subdomain = null
+      } else if (await subdomainAvailable(data.subdomain, { orgId: org.id })) {
+        updateData.subdomain = data.subdomain
+      } else {
+        return NextResponse.json({ error: "That subdomain isn't available" }, { status: 409 })
+      }
+    }
 
     const updated = await db.organization.update({
       where: { id: org.id },

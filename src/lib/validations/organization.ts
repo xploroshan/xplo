@@ -8,7 +8,24 @@ export const createOrganizationSchema = z.object({
   city: z.string().max(100).optional(),
 })
 
-export const updateOrganizationSchema = createOrganizationSchema.partial()
+// Shared microsite/branding fields (also reused for individual organizers).
+export const micrositeFields = {
+  subdomain: z
+    .string()
+    .min(2)
+    .max(40)
+    .regex(/^[a-z0-9-]+$/, "Lowercase letters, numbers, and hyphens only")
+    .nullable()
+    .optional(),
+  themeColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Use a #rrggbb hex color")
+    .nullable()
+    .optional(),
+  tagline: z.string().max(160).nullable().optional(),
+}
+
+export const updateOrganizationSchema = createOrganizationSchema.partial().extend(micrositeFields)
 
 export const addMemberSchema = z.object({
   userId: z.string().min(1),

@@ -6,12 +6,44 @@ import bcrypt from "bcryptjs"
 import { db } from "@/lib/db"
 import { verifyTotp } from "@/lib/totp"
 
+// Share the session across every `*.hykrz.com` microsite subdomain by scoping
+// the cookie to the parent domain. Derived from NEXT_PUBLIC_APP_URL so it's a
+// no-op locally (host-only cookie) where wildcard cookies aren't needed.
+function cookieDomain(): string | undefined {
+  try {
+    const host = new URL(process.env.NEXT_PUBLIC_APP_URL || "").hostname
+    // Only set a parent-domain cookie for real registrable domains (not
+    // localhost / IPs), so all subdomains share the login.
+    if (host && host.includes(".") && !/^[\d.]+$/.test(host)) return "." + host
+  } catch {
+    /* ignore */
+  }
+  return undefined
+}
+
+const COOKIE_DOMAIN = cookieDomain()
+const USE_SECURE = (process.env.NEXT_PUBLIC_APP_URL || "").startsWith("https://")
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  cookies: COOKIE_DOMAIN
+    ? {
+        sessionToken: {
+          name: `${USE_SECURE ? "__Secure-" : ""}authjs.session-token`,
+          options: {
+            httpOnly: true,
+            sameSite: "lax",
+            path: "/",
+            secure: USE_SECURE,
+            domain: COOKIE_DOMAIN,
+          },
+        },
+      }
+    : undefined,
   pages: {
     signIn: "/login",
     error: "/login",

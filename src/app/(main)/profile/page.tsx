@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { OrganizerCta } from "@/components/profile/organizer-cta"
 import { ChangePassword } from "@/components/profile/change-password"
+import { MicrositeSettings } from "@/components/profile/microsite-settings"
 import { EditProfile } from "@/components/profile/edit-profile"
 import { EmailVerification } from "@/components/profile/email-verification"
 import { TwoFactor } from "@/components/profile/two-factor"
@@ -27,6 +28,7 @@ export default async function ProfilePage() {
       select: {
         name: true, email: true, image: true, bio: true, city: true, interests: true,
         emailVerified: true, twoFactorEnabled: true, role: true, createdAt: true,
+        subdomain: true, themeColor: true, tagline: true,
       },
     }),
     db.eventParticipant.count({ where: { userId, status: "CONFIRMED" } }),
@@ -159,6 +161,15 @@ export default async function ProfilePage() {
           }}
         />
         <TwoFactor enabled={user.twoFactorEnabled} />
+        {isOrganizer && (
+          <MicrositeSettings
+            initial={{
+              subdomain: user.subdomain || "",
+              themeColor: user.themeColor || "",
+              tagline: user.tagline || "",
+            }}
+          />
+        )}
         <ChangePassword />
         {!isOrganizer && <OrganizerCta />}
       </div>
