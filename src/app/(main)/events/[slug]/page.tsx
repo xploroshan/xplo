@@ -115,14 +115,21 @@ export default async function EventDetailPage({ params }: PageProps) {
 
   const session = await auth()
   let isRegistered = false
-  let myParticipation: { status: string; rating: number | null; review: string | null } | null = null
+  let myParticipation: { status: string; rating: number | null; review: string | null; joinedAt: Date } | null = null
+  let waitlistPosition: number | null = null
   if (session?.user?.id) {
     const p = await db.eventParticipant.findUnique({
       where: { userId_eventId: { userId: session.user.id, eventId: event.id } },
-      select: { status: true, rating: true, review: true },
+      select: { status: true, rating: true, review: true, joinedAt: true },
     })
     isRegistered = !!p && p.status !== "CANCELLED"
     myParticipation = p
+    // Where the viewer sits in the waitlist queue (1-based, ordered by joinedAt).
+    if (p?.status === "WAITLISTED") {
+      waitlistPosition = await db.eventParticipant.count({
+        where: { eventId: event.id, status: "WAITLISTED", joinedAt: { lte: p.joinedAt } },
+      })
+    }
   }
 
   // Paid ticket tiers (active). When present, they replace the free RSVP button.
@@ -622,7 +629,19 @@ export default async function EventDetailPage({ params }: PageProps) {
                       isAuthenticated={!!session?.user}
                       isFull={isFull}
                       organizerSlug={event.organizer.slug || ""}
+                      initialStatus={
+                        myParticipation?.status === "WAITLISTED"
+                          ? "WAITLISTED"
+                          : myParticipation?.status === "PENDING"
+                            ? "PENDING"
+                            : "CONFIRMED"
+                      }
                     />
+                  )}
+                  {waitlistPosition !== null && (
+                    <p className="text-xs text-center text-amber-400">
+                      You&apos;re #{waitlistPosition} on the waitlist — we&apos;ll confirm you if a spot opens.
+                    </p>
                   )}
                   {myParticipation?.status === "CONFIRMED" && (
                     <Link href={`/events/${event.slug}/pass`}>

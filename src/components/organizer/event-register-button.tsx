@@ -13,6 +13,8 @@ interface EventRegisterButtonProps {
   isAuthenticated: boolean
   isFull: boolean
   organizerSlug: string
+  /** The viewer's current participation status, so a reload shows it correctly. */
+  initialStatus?: RegStatus
   /** Fired after a successful join/cancel so the card can show the follow nudge. */
   onRegisteredChange?: (registered: boolean) => void
 }
@@ -29,11 +31,12 @@ export function EventRegisterButton({
   isAuthenticated,
   isFull,
   organizerSlug,
+  initialStatus = "CONFIRMED",
   onRegisteredChange,
 }: EventRegisterButtonProps) {
   const router = useRouter()
   const [isRegistered, setIsRegistered] = useState(initialRegistered)
-  const [status, setStatus] = useState<RegStatus>("CONFIRMED")
+  const [status, setStatus] = useState<RegStatus>(initialStatus)
   const [loading, setLoading] = useState(false)
 
   async function handleRegister() {

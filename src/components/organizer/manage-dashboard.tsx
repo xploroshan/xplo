@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, type ReactNode } from "react"
-import { Users, Pencil, Megaphone, Check, X, ArrowUp, Loader2, Ticket, Trash2 } from "lucide-react"
+import { Users, Pencil, Megaphone, Check, X, ArrowUp, Loader2, Ticket, Trash2, IndianRupee } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -58,7 +58,7 @@ export function ManageDashboard({
   event: EventData
   initialParticipants: Participant[]
 }) {
-  const [tab, setTab] = useState<"roster" | "tickets" | "edit" | "broadcast">("roster")
+  const [tab, setTab] = useState<"roster" | "tickets" | "revenue" | "edit" | "broadcast">("roster")
   const [participants, setParticipants] = useState(initialParticipants)
 
   const pending = participants.filter((p) => p.status === "PENDING")
@@ -98,6 +98,7 @@ export function ManageDashboard({
   const tabs = [
     { key: "roster" as const, label: "Roster", icon: Users },
     { key: "tickets" as const, label: "Tickets", icon: Ticket },
+    { key: "revenue" as const, label: "Revenue", icon: IndianRupee },
     { key: "edit" as const, label: "Edit", icon: Pencil },
     { key: "broadcast" as const, label: "Broadcast", icon: Megaphone },
   ]
@@ -145,6 +146,7 @@ export function ManageDashboard({
       )}
       {tab === "edit" && <EditTab event={event} />}
       {tab === "tickets" && <TicketsTab eventId={event.id} />}
+      {tab === "revenue" && <RevenueTab eventId={event.id} />}
       {tab === "broadcast" && <BroadcastTab eventId={event.id} recipientCount={confirmed.length} />}
     </div>
   )
@@ -594,6 +596,107 @@ function TicketsTab({ eventId }: { eventId: string }) {
           {saving && <Loader2 className="h-4 w-4 animate-spin" />}
           Add tier
         </Button>
+      </div>
+    </div>
+  )
+}
+
+interface OrderRow {
+  id: string
+  buyer: string
+  tier: string
+  quantity: number
+  amount: number
+  platformFee: number
+  net: number
+  currency: string
+  paymentId: string | null
+  createdAt: string
+}
+interface RevenueSummary {
+  gross: number
+  fees: number
+  net: number
+  count: number
+  tickets: number
+  currency: string
+}
+
+function RevenueTab({ eventId }: { eventId: string }) {
+  const [orders, setOrders] = useState<OrderRow[]>([])
+  const [summary, setSummary] = useState<RevenueSummary | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch(`/api/events/${eventId}/orders`)
+      .then((r) => (r.ok ? r.json() : { orders: [], summary: null }))
+      .then((d) => {
+        setOrders(d.orders ?? [])
+        setSummary(d.summary ?? null)
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [eventId])
+
+  const money = (n: number, c = "INR") =>
+    `${c === "INR" ? "₹" : c + " "}${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`
+
+  if (loading) return <Loader2 className="h-5 w-5 animate-spin text-zinc-600" />
+
+  if (!summary || summary.count === 0) {
+    return (
+      <p className="text-sm text-zinc-500 max-w-xl">
+        No paid orders yet. Once riders buy tickets, you&apos;ll see gross revenue, the platform
+        fee, your net payout, and a per-order breakdown here.
+      </p>
+    )
+  }
+
+  const cards = [
+    { label: "Gross revenue", value: money(summary.gross, summary.currency) },
+    { label: "Platform fee", value: money(summary.fees, summary.currency) },
+    { label: "Net payout", value: money(summary.net, summary.currency) },
+    { label: "Tickets sold", value: String(summary.tickets) },
+  ]
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {cards.map((c) => (
+          <div key={c.label} className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+            <p className="text-lg font-bold text-white">{c.value}</p>
+            <p className="text-[10px] uppercase tracking-wider text-zinc-500 mt-0.5">{c.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-xs text-zinc-500 border-b border-zinc-800">
+              <th className="px-4 py-2.5 font-medium">Buyer</th>
+              <th className="px-4 py-2.5 font-medium">Tier</th>
+              <th className="px-4 py-2.5 font-medium text-right">Qty</th>
+              <th className="px-4 py-2.5 font-medium text-right">Amount</th>
+              <th className="px-4 py-2.5 font-medium text-right">Net</th>
+              <th className="px-4 py-2.5 font-medium hidden sm:table-cell">Date</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-800/60">
+            {orders.map((o) => (
+              <tr key={o.id} className="text-zinc-300">
+                <td className="px-4 py-2.5 text-white">{o.buyer}</td>
+                <td className="px-4 py-2.5 text-zinc-400">{o.tier}</td>
+                <td className="px-4 py-2.5 text-right">{o.quantity}</td>
+                <td className="px-4 py-2.5 text-right">{money(o.amount, o.currency)}</td>
+                <td className="px-4 py-2.5 text-right text-green-400">{money(o.net, o.currency)}</td>
+                <td className="px-4 py-2.5 text-zinc-500 hidden sm:table-cell">
+                  {new Date(o.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )
